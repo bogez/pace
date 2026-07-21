@@ -24,9 +24,9 @@ your browser.
 - 💻 **Desktop:** open the link → the install icon in the address bar (Chrome/Edge) → a
   standalone window for your dock or taskbar.
 
-**Landed so far:** the engine (below) and the tracker PWA. Still to come in M2: trust
-checks in CI ([#7](https://github.com/bogez/pace/issues/7)), the accessibility pass
-([#8](https://github.com/bogez/pace/issues/8)), and visible staleness
+**Landed so far:** the engine (below) and the tracker PWA, with the trust commitments
+machine-enforced in CI ([TRUST.md](TRUST.md)). Still to come in M2: the accessibility pass
+([#8](https://github.com/bogez/pace/issues/8)) and visible staleness
 ([#9](https://github.com/bogez/pace/issues/9)).
 
 This repository is the deliberate rebuild of a validated

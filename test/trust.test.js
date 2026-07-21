@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
 
-const APP_FILES = ["index.html", "app/tracker.js", "app/window.js", "src/pace.js", "sw.js"];
+const APP_FILES = ["index.html", "app/tracker.js", "app/window.js", "app/calibration.js", "src/pace.js", "sw.js"];
 const SENSOR_FILES = [
   "sensors/claude-code.mjs",
   "sensors/parse-transcripts.mjs",

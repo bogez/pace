@@ -6,7 +6,7 @@
  * network calls and never will (TRUST.md commitment 2).
  */
 import { paceDelta, paceColor, paceState, forecast } from "../src/pace.js";
-import { weeklyWindow, sessionWindow, WEEK_HOURS, SESSION_HOURS } from "./window.js";
+import { weeklyWindow, sessionWindow, stalenessTier, hoursBetween, WEEK_HOURS, SESSION_HOURS } from "./window.js";
 
 /* ---------------- storage ---------------- */
 
@@ -40,6 +40,7 @@ const els = {
   stateName: $("state-name"),
   deltaLine: $("delta-line"),
   forecastLine: $("forecast-line"),
+  ageLine: $("age-line"),
   checkinForm: $("checkin-form"),
   weeklyPct: $("weekly-pct"),
   sessionForm: $("session-form"),
@@ -106,13 +107,21 @@ function render() {
         : "Your week reset since the last check-in — log a fresh one."
     );
     setText(els.forecastLine, "");
+    setText(els.ageLine, "");
+    els.dot.classList.remove("stale");
     els.setup.open = state.checkins.length === 0;
   } else {
     const delta = paceDelta(checkin.weeklyPct, win.elapsedHours, WEEK_HOURS);
     const st = paceState(delta);
+    const age = hoursBetween(new Date(checkin.t), now);
+    const tier = stalenessTier(age);
+
     els.dot.style.background = paceColor(delta);
+    // Stale: every channel degrades, not just color — desaturated dot,
+    // "probably" in the words, qualified forecast (#9, charter principle 3).
+    els.dot.classList.toggle("stale", tier === "stale");
     setText(els.glyph, st.glyph);
-    setText(els.stateName, st.name);
+    setText(els.stateName, tier === "stale" ? `probably ${st.name}` : st.name);
     setText(
       els.deltaLine,
       `${checkin.weeklyPct}% used, ${win.elapsedPct.toFixed(0)}% of the week elapsed — ${fmtDelta(delta)}`
@@ -134,6 +143,21 @@ function render() {
           (f.projectedPct < 85 ? "you can afford to push." : "cutting it close.")
       );
     }
+    if (f && tier === "stale") {
+      setText(
+        els.forecastLine,
+        els.forecastLine.textContent + ` (Based on a check-in ${fmtHours(age)} ago.)`
+      );
+    }
+
+    setText(
+      els.ageLine,
+      tier === "fresh"
+        ? `Checked in ${fmtHours(age)} ago.`
+        : tier === "aging"
+          ? `◌ Checked in ${fmtHours(age)} ago — worth a fresh look at /usage.`
+          : `◌ Checked in ${fmtHours(age)} ago — this color is a guess until you check /usage.`
+    );
   }
 
   renderSession(now);

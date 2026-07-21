@@ -62,3 +62,24 @@ export function sessionWindow(now, resetsAt) {
   if (remaining <= 0 || remaining > SESSION_HOURS) return null;
   return { elapsedHours: SESSION_HOURS - remaining };
 }
+
+/**
+ * Staleness tiers for a check-in's age (bogez/pace#9, design agreed
+ * in-thread). Derived from expected-pace drift (~0.6 points/hour in a
+ * weekly window): under 12 h the color is still meaningful; by 24 h it
+ * could be a full zone off; beyond that it's a labeled guess.
+ * Boundary values belong to the milder tier, matching the engine's zone
+ * convention.
+ */
+export const FRESH_MAX_HOURS = 12;
+export const AGING_MAX_HOURS = 24;
+
+/**
+ * @param {number} ageHours - hours since the last check-in
+ * @returns {"fresh" | "aging" | "stale"}
+ */
+export function stalenessTier(ageHours) {
+  if (ageHours <= FRESH_MAX_HOURS) return "fresh";
+  if (ageHours <= AGING_MAX_HOURS) return "aging";
+  return "stale";
+}

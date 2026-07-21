@@ -40,7 +40,10 @@ export const PALETTE = Object.freeze({
   green: Object.freeze([12, 163, 12]),
   yellow: Object.freeze([250, 178, 25]),
   red: Object.freeze([208, 59, 59]),
-  teal: Object.freeze([53, 162, 79]),
+  // A real teal, not another green: the cool side must be visually
+  // distinguishable from "in the zone" at a glance. Decided in bogez/pace#34
+  // after live-user confusion (green dot at −14 pace delta read as "on pace").
+  teal: Object.freeze([32, 154, 143]),
   blue: Object.freeze([57, 135, 229]),
   deepBlue: Object.freeze([28, 92, 171]),
 });

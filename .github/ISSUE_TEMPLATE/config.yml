@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability (private)
+    url: https://github.com/bogez/pace/security/advisories/new
+    about: Please report anything that could put users at risk privately, not as a public issue.

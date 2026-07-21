@@ -1,0 +1,29 @@
+name: Design decision
+description: A choice that shapes the project, argued in the open before code
+labels: ["design-decision"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Charter principle 5: decisions leave a trail. The discussion happens here, the
+        decision is recorded here, and significant ones get committed to `docs/design/`.
+  - type: textarea
+    id: question
+    attributes:
+      label: The question
+      description: One sentence if possible. What must be decided, and by when does it block work?
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options on the table
+      description: The honest contenders, each with its strongest argument — including the one you don't prefer.
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: What decides it
+      description: Which charter principles, personas, or measurements should settle this?
+      placeholder: e.g. "principle 3 (honesty about estimates) outweighs install convenience here because…"

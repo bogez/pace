@@ -1,0 +1,40 @@
+name: Bug report
+description: Something doesn't work the way the docs say it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time! If this is a security issue that could put users at
+        risk, please use [private reporting](https://github.com/bogez/pace/security/advisories/new) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+      placeholder: |
+        1. Opened the tracker and entered 53% …
+        2. Expected the state to read "cool" …
+        3. Instead it showed …
+    validations:
+      required: true
+  - type: input
+    id: component
+    attributes:
+      label: Component
+      description: Engine, PWA tracker, Claude Code sensor, tray app, docs, CI…
+      placeholder: PWA tracker
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS + browser (for the PWA/tray) or Node version (for engine/sensor)
+      placeholder: macOS 15, Safari 18 / Node 24
+  - type: textarea
+    id: numbers
+    attributes:
+      label: The numbers involved (if it's a math/display bug)
+      description: Usage %, elapsed time, window length, and what Pace showed — the fastest route to a pinning test.
+      placeholder: 53% used, 112h into a 168h window → showed "warm ▲" but should be "cool ▼"

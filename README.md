@@ -14,12 +14,20 @@ One glance, one color, no math.
 
 ## Status: pre-alpha, built in the open
 
-**Landed so far:** the engine (below) and the web tracker
-([`index.html`](index.html) + [`app/`](app/)) — manual `/usage` check-ins, live pace
-between check-ins, forecast, and the 5-hour session cue. **Not hosted anywhere yet** —
-public hosting, installability, and offline support arrive with
-[#6](https://github.com/bogez/pace/issues/6). To try it today: clone the repo, run any
-static server (`python3 -m http.server`), and open `localhost:8000`.
+**The tracker is live: [bogez.github.io/pace →](https://bogez.github.io/pace/)**
+Nothing to install — set your reset day once, type in what `/usage` shows now and then,
+and Pace keeps the color, delta, and forecast live between check-ins. All data stays in
+your browser.
+
+- 📱 **Phone:** open the link → browser menu → **Add to Home Screen** — it installs like
+  an app, icon and all, and works offline.
+- 💻 **Desktop:** open the link → the install icon in the address bar (Chrome/Edge) → a
+  standalone window for your dock or taskbar.
+
+**Landed so far:** the engine (below) and the tracker PWA. Still to come in M2: trust
+checks in CI ([#7](https://github.com/bogez/pace/issues/7)), the accessibility pass
+([#8](https://github.com/bogez/pace/issues/8)), and visible staleness
+([#9](https://github.com/bogez/pace/issues/9)).
 
 This repository is the deliberate rebuild of a validated
 prototype — [pace-concept](https://github.com/bogez/pace-concept), which went from idea to

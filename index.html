@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pace — am I in the zone?</title>
   <meta name="description" content="A fuel gauge for your AI subscription. One glance, one color, no math." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#1a1a19" />
+  <link rel="icon" type="image/png" sizes="192x192" href="app/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="app/icons/icon-192.png" />
   <link rel="stylesheet" href="app/tracker.css" />
 </head>
 <body>
@@ -92,5 +96,9 @@
   </footer>
 
   <script type="module" src="app/tracker.js"></script>
+  <script>
+    // Offline support (#6). Same-origin only — see sw.js and TRUST.md.
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
+  </script>
 </body>
 </html>

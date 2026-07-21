@@ -20,13 +20,18 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
 
 const APP_FILES = ["index.html", "app/tracker.js", "app/window.js", "src/pace.js", "sw.js"];
+const SENSOR_FILES = [
+  "sensors/claude-code.mjs",
+  "sensors/parse-transcripts.mjs",
+  "sensors/weights.mjs",
+];
 
 // Network APIs that must not appear anywhere in shipped code. `fetch` is
 // special-cased: sw.js needs it to serve the app shell, under a guard.
 const FORBIDDEN = ["XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts"];
 
 test("TRUST 2: no network APIs in any shipped file", () => {
-  for (const file of APP_FILES) {
+  for (const file of [...APP_FILES, ...SENSOR_FILES]) {
     const text = read(file);
     for (const api of FORBIDDEN) {
       assert.ok(
@@ -62,6 +67,24 @@ test("TRUST 2: no page resource loads from an external origin", () => {
       !/^(https?:)?\/\//i.test(url),
       `<${tag} ${attr}="${url}"> loads from an external origin — TRUST.md commitment 2`
     );
+  }
+});
+
+test("TRUST 1: sensors are read-only — no write or delete APIs", () => {
+  // The sensor may read local transcripts the user already owns; it must
+  // never write, delete, or spawn anything.
+  const WRITE_APIS = [
+    "writeFileSync", "appendFileSync", "createWriteStream", "writeFile",
+    "unlink", "rmSync", "rmdir", "mkdir", "rename", "spawn", "exec",
+  ];
+  for (const file of SENSOR_FILES) {
+    const text = read(file);
+    for (const api of WRITE_APIS) {
+      assert.ok(
+        !text.includes(api),
+        `${file} contains ${api} — sensors are read-only (TRUST.md commitment 1)`
+      );
+    }
   }
 });
 

@@ -72,6 +72,15 @@ const fmtWhen = (t) =>
     minute: "2-digit",
   });
 
+/**
+ * Set text only when it changed: the meter is an aria-live region, and
+ * rewriting identical text on the 30 s tick would make screen readers
+ * re-announce a state that hasn't moved (#8).
+ */
+const setText = (el, s) => {
+  if (el.textContent !== s) el.textContent = s;
+};
+
 /** Latest check-in belonging to the current window, or null. */
 function currentCheckin(win) {
   const last = state.checkins.at(-1);
@@ -88,36 +97,42 @@ function render() {
 
   if (!checkin) {
     els.dot.style.background = "";
-    els.glyph.textContent = "●";
-    els.stateName.textContent = "no data yet";
-    els.dot.setAttribute("aria-label", "no data yet");
-    els.deltaLine.textContent =
+    setText(els.glyph, "●");
+    setText(els.stateName, "no data yet");
+    setText(
+      els.deltaLine,
       state.checkins.length === 0
         ? `You're ${win.elapsedPct.toFixed(0)}% through the week. Log a check-in to get a color.`
-        : "Your week reset since the last check-in — log a fresh one.";
-    els.forecastLine.textContent = "";
+        : "Your week reset since the last check-in — log a fresh one."
+    );
+    setText(els.forecastLine, "");
     els.setup.open = state.checkins.length === 0;
   } else {
     const delta = paceDelta(checkin.weeklyPct, win.elapsedHours, WEEK_HOURS);
     const st = paceState(delta);
     els.dot.style.background = paceColor(delta);
-    els.glyph.textContent = st.glyph;
-    els.stateName.textContent = st.name;
-    els.dot.setAttribute("aria-label", `${st.name} (${st.glyph})`);
-    els.deltaLine.textContent =
-      `${checkin.weeklyPct}% used, ${win.elapsedPct.toFixed(0)}% of the week elapsed — ${fmtDelta(delta)}`;
+    setText(els.glyph, st.glyph);
+    setText(els.stateName, st.name);
+    setText(
+      els.deltaLine,
+      `${checkin.weeklyPct}% used, ${win.elapsedPct.toFixed(0)}% of the week elapsed — ${fmtDelta(delta)}`
+    );
 
     const f = forecast(checkin.weeklyPct, win.elapsedHours, WEEK_HOURS);
     if (!f) {
-      els.forecastLine.textContent = "";
+      setText(els.forecastLine, "");
     } else if (f.runsOut) {
       const short = WEEK_HOURS - win.elapsedHours - f.unitsToExhaustion;
-      els.forecastLine.textContent =
-        `At your average pace you hit 100% about ${fmtHours(short)} before the reset.`;
+      setText(
+        els.forecastLine,
+        `At your average pace you hit 100% about ${fmtHours(short)} before the reset.`
+      );
     } else {
-      els.forecastLine.textContent =
+      setText(
+        els.forecastLine,
         `At your average pace you'd end the week at ${Math.round(f.projectedPct)}% — ` +
-        (f.projectedPct < 85 ? "you can afford to push." : "cutting it close.");
+          (f.projectedPct < 85 ? "you can afford to push." : "cutting it close.")
+      );
     }
   }
 
@@ -140,10 +155,16 @@ function renderSession(now) {
   }
   const delta = paceDelta(state.session.pct, sw.elapsedHours, SESSION_HOURS);
   const st = paceState(delta);
-  els.sessionLine.textContent =
-    `${st.glyph} ${st.name} — ${state.session.pct}% used, ` +
-    `${fmtHours(SESSION_HOURS - sw.elapsedHours)} until the session resets`;
-  els.sessionLine.style.color = paceColor(delta);
+  // Color rides on a swatch, never on the text — colored text can't hold AA
+  // contrast across the whole ramp, and the words must stay readable (#8).
+  const swatch = document.createElement("span");
+  swatch.className = "swatch";
+  swatch.style.background = paceColor(delta);
+  els.sessionLine.replaceChildren(
+    swatch,
+    ` ${st.glyph} ${st.name} — ${state.session.pct}% used, ` +
+      `${fmtHours(SESSION_HOURS - sw.elapsedHours)} until the session resets`
+  );
 }
 
 function renderHistory(win) {

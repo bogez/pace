@@ -25,6 +25,7 @@
       <p class="state"><span id="glyph" class="glyph">●</span> <span id="state-name">no data yet</span></p>
       <p id="delta-line" class="delta-line">Log your first check-in below to get a color.</p>
       <p id="forecast-line" class="forecast-line"></p>
+      <p id="source-line" class="source-line"></p>
       <p id="age-line" class="age-line"></p>
     </section>
 
@@ -58,6 +59,26 @@
         </div>
       </form>
       <p id="session-line" class="session-line"></p>
+    </section>
+
+    <!-- Sensor import: automatic usage, honestly calibrated -->
+    <section class="card">
+      <details id="sensor-details">
+        <summary><h2>Sensor <span class="muted">(Claude Code, optional)</span></h2></summary>
+        <p class="hint">Run <code>node sensors/claude-code.mjs --json</code> from a clone of this
+          repo and import the output. Pace turns tokens into an <em>estimated</em> % once you
+          calibrate by logging a real check-in. Nothing leaves this device.</p>
+        <label for="sensor-paste">Paste the sensor's JSON output</label>
+        <textarea id="sensor-paste" rows="3" spellcheck="false"></textarea>
+        <div class="row">
+          <button id="sensor-import" type="button">Import</button>
+          <span>
+            <label for="sensor-file">or choose the file</label>
+            <input id="sensor-file" type="file" accept=".json,application/json" />
+          </span>
+        </div>
+        <p id="sensor-line" class="hint" aria-live="polite"></p>
+      </details>
     </section>
 
     <!-- Window setup -->

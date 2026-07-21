@@ -8,8 +8,11 @@ import {
   lastWeeklyReset,
   weeklyWindow,
   sessionWindow,
+  stalenessTier,
   WEEK_HOURS,
   SESSION_HOURS,
+  FRESH_MAX_HOURS,
+  AGING_MAX_HOURS,
 } from "../app/window.js";
 
 // A known anchor: 2026-07-21 is a Tuesday (getDay() === 2).
@@ -53,4 +56,13 @@ test("session window: mid-session, expired, and nonsense inputs", () => {
   assert.equal(sessionWindow(now, tue(11)), null);
   // Claims to reset 9 h out — longer than a session can be → null.
   assert.equal(sessionWindow(now, tue(21)), null);
+});
+
+test("staleness tiers: boundaries belong to the milder tier (#9)", () => {
+  assert.equal(stalenessTier(0), "fresh");
+  assert.equal(stalenessTier(FRESH_MAX_HOURS), "fresh");
+  assert.equal(stalenessTier(FRESH_MAX_HOURS + 0.01), "aging");
+  assert.equal(stalenessTier(AGING_MAX_HOURS), "aging");
+  assert.equal(stalenessTier(AGING_MAX_HOURS + 0.01), "stale");
+  assert.equal(stalenessTier(24 * 7), "stale");
 });

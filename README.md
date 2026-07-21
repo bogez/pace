@@ -24,10 +24,11 @@ your browser.
 - 💻 **Desktop:** open the link → the install icon in the address bar (Chrome/Edge) → a
   standalone window for your dock or taskbar.
 
-**Landed so far:** the engine (below) and the tracker PWA, with the trust commitments
-machine-enforced in CI ([TRUST.md](TRUST.md)). Still to come in M2: the accessibility pass
-([#8](https://github.com/bogez/pace/issues/8)) and visible staleness
-([#9](https://github.com/bogez/pace/issues/9)).
+**Milestones M0–M2 are complete:** the engine, and the tracker PWA — installable,
+offline-capable, accessible, honest about stale data, with the trust commitments
+machine-enforced in CI ([TRUST.md](TRUST.md)). Next: M3, automatic usage from Claude
+Code transcripts with calibration honesty
+([#10](https://github.com/bogez/pace/issues/10)–[#14](https://github.com/bogez/pace/issues/14)).
 
 This repository is the deliberate rebuild of a validated
 prototype — [pace-concept](https://github.com/bogez/pace-concept), which went from idea to

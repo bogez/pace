@@ -60,6 +60,12 @@ h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
 .glyph { font-size: 1.05em; }
 .delta-line { margin: 0.25rem 0 0; color: var(--muted); }
 .forecast-line { margin: 0.6rem 0 0; font-size: 0.95rem; }
+.age-line { margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.dot.stale {
+  filter: saturate(0.35);
+  opacity: 0.75;
+  transform: scale(0.88);
+}
 
 /* ---- forms ---- */
 label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.15rem; }

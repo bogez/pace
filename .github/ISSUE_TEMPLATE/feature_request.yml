@@ -1,0 +1,37 @@
+name: Feature request
+description: Propose something Pace should do
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing: check the [roadmap](https://github.com/bogez/pace/blob/main/ROADMAP.md)
+        and existing issues — much of v1 is already planned, and post-v1 ideas may be
+        parked with unpark conditions. Also worth a skim: the charter's
+        [non-goals](https://github.com/bogez/pace/blob/main/CHARTER.md#non-goals).
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What's annoying or missing, for whom? (Personas: the rationer, the agent runner.)
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would Pace do? Sketches and half-ideas welcome.
+    validations:
+      required: true
+  - type: checkboxes
+    id: charter-check
+    attributes:
+      label: Charter check
+      description: Pace says no to some things permanently — confirm the idea survives them.
+      options:
+        - label: This needs no scraping, token replay, or undocumented endpoints
+          required: true
+        - label: This works with all data staying on the user's device
+          required: true
+        - label: This saves the user's attention rather than demanding it (Pace is ambient, not a dashboard)
+          required: true

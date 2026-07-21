@@ -1,0 +1,42 @@
+# Trust policy
+
+Pace's core differentiator is that its trustworthiness is **verifiable, not asserted**
+(charter principle 1). This file lists the concrete commitments, how each one is verified,
+and by whom. Commitments are permanent; verification tightens as components ship.
+
+## Permanent commitments
+
+These hold for every version, forever. A pull request that violates one will be closed,
+per [CONTRIBUTING.md](CONTRIBUTING.md).
+
+| # | Commitment | Verification |
+|---|---|---|
+| 1 | **No scraping, ever.** No session scraping, auth-token replay, or polling of undocumented endpoints. Data sources are official APIs, local files the user already owns, or manual input. | Human review of every PR touching sensors; the rule is a merge requirement. |
+| 2 | **All data stays on your device.** No cloud, no accounts, no telemetry. There is no server that could see your data. | CI-enforced once the PWA ships ([#7](https://github.com/bogez/pace/issues/7)): the build fails if the app bundle contains any network call (`fetch`, `XMLHttpRequest`, `WebSocket`, beacons, external origins). |
+| 3 | **The engine has zero dependencies.** The pace math is plain ESM with no imports and no runtime packages. | CI-enforced once the engine ships ([#3](https://github.com/bogez/pace/issues/3)): the build fails if `package.json` gains `dependencies` or the engine imports outside its own files. |
+| 4 | **Leaving is easy and complete.** Uninstall steps and data locations are documented per platform, and "Clear all data" actually clears everything. | Clear-all-data: automated browser test ([#7](https://github.com/bogez/pace/issues/7)). Uninstall docs: verified by hand on each OS before release, with dates recorded ([#18](https://github.com/bogez/pace/issues/18)). |
+| 5 | **Estimates never impersonate measurements.** Sensor-derived numbers are visibly estimates; stale data is visibly stale. | Human review against charter principle 3; presentation rules designed in [#9](https://github.com/bogez/pace/issues/9) and [#13](https://github.com/bogez/pace/issues/13). |
+| 6 | **Binaries are built in public.** Native installers come from GitHub Actions runs on this repository — anyone can audit the code and watch the build that produced the download. | The release workflow and its run logs are public ([#17](https://github.com/bogez/pace/issues/17)). |
+
+## Current status
+
+The project is pre-alpha; no components have shipped yet. Rows marked "CI-enforced once …
+ships" describe checks that land in the same milestone as the component they guard — a
+component is not considered shipped until its trust checks are in CI.
+
+## Honest limitations
+
+- Unsigned native installers trigger OS warnings (SmartScreen, Gatekeeper). That is the
+  operating systems working as intended on software that hasn't paid for code signing. The
+  README documents exactly what you'll see and why; if that makes you uncomfortable, the
+  web app involves no installer at all. Signed distribution is a
+  [parked milestone](https://github.com/bogez/pace/issues/21), sponsor-funded.
+- Sensor estimates are approximations calibrated against what you type in from `/usage`.
+  They can drift between calibrations; the UI is designed to make that drift visible
+  rather than hide it.
+
+## Reporting a violation
+
+If you believe any commitment above is violated — in code, in docs, or in a release —
+open an issue immediately, or use the private channel in [SECURITY.md](SECURITY.md) if
+disclosure could put users at risk.

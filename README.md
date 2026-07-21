@@ -14,7 +14,14 @@ One glance, one color, no math.
 
 ## Status: pre-alpha, built in the open
 
-**No apps are usable yet** — so far only the engine (below) has landed. This repository is the deliberate rebuild of a validated
+**Landed so far:** the engine (below) and the web tracker
+([`index.html`](index.html) + [`app/`](app/)) — manual `/usage` check-ins, live pace
+between check-ins, forecast, and the 5-hour session cue. **Not hosted anywhere yet** —
+public hosting, installability, and offline support arrive with
+[#6](https://github.com/bogez/pace/issues/6). To try it today: clone the repo, run any
+static server (`python3 -m http.server`), and open `localhost:8000`.
+
+This repository is the deliberate rebuild of a validated
 prototype — [pace-concept](https://github.com/bogez/pace-concept), which went from idea to
 a working web app, tray app, and 4-platform installers in a single evening, and proved the
 concept but skipped the process. This time the process is the point:

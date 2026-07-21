@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pace — am I in the zone?</title>
+  <meta name="description" content="A fuel gauge for your AI subscription. One glance, one color, no math." />
+  <link rel="stylesheet" href="app/tracker.css" />
+</head>
+<body>
+  <header>
+    <h1>Pace</h1>
+    <p class="tagline">A fuel gauge for your AI subscription</p>
+  </header>
+
+  <main>
+    <!-- The answer: one glance, one color, no math -->
+    <section id="meter" class="card meter" aria-live="polite">
+      <div id="dot" class="dot" role="img" aria-label="pace state"></div>
+      <p class="state"><span id="glyph" class="glyph">●</span> <span id="state-name">no data yet</span></p>
+      <p id="delta-line" class="delta-line">Log your first check-in below to get a color.</p>
+      <p id="forecast-line" class="forecast-line"></p>
+    </section>
+
+    <!-- Check-in: type what /usage shows -->
+    <section class="card">
+      <h2>Check-in</h2>
+      <p class="hint">Type what <code>/usage</code> shows for the <strong>week</strong>. Pace keeps the
+        color live between check-ins — time moves even when the number is stale.</p>
+      <form id="checkin-form">
+        <label for="weekly-pct">Weekly usage %</label>
+        <input id="weekly-pct" name="weekly-pct" type="number" inputmode="decimal"
+               min="0" max="100" step="0.1" placeholder="53" required />
+        <button type="submit">Log check-in</button>
+      </form>
+    </section>
+
+    <!-- Secondary cue: the 5-hour session window -->
+    <section class="card session">
+      <h2>Session <span class="muted">(5-hour window, optional)</span></h2>
+      <form id="session-form">
+        <div class="row">
+          <span>
+            <label for="session-pct">Session %</label>
+            <input id="session-pct" type="number" inputmode="decimal" min="0" max="100" step="1" placeholder="40" />
+          </span>
+          <span>
+            <label for="session-resets">Resets at</label>
+            <input id="session-resets" type="time" />
+          </span>
+          <button type="submit">Set</button>
+        </div>
+      </form>
+      <p id="session-line" class="session-line"></p>
+    </section>
+
+    <!-- Window setup -->
+    <section class="card">
+      <details id="setup">
+        <summary><h2>Your weekly reset</h2></summary>
+        <p class="hint">When does <code>/usage</code> say your week resets?</p>
+        <div class="row">
+          <span>
+            <label for="reset-dow">Day</label>
+            <select id="reset-dow">
+              <option value="0">Sunday</option><option value="1">Monday</option>
+              <option value="2">Tuesday</option><option value="3">Wednesday</option>
+              <option value="4">Thursday</option><option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </span>
+          <span>
+            <label for="reset-hour">Hour</label>
+            <select id="reset-hour"></select>
+          </span>
+        </div>
+      </details>
+    </section>
+
+    <!-- History -->
+    <section class="card" id="history-card" hidden>
+      <h2>Check-ins</h2>
+      <ul id="history"></ul>
+    </section>
+  </main>
+
+  <footer>
+    <button id="clear-data" class="danger">Clear all data</button>
+    <p class="fine">All data lives in your browser — nothing leaves your device.
+      <a href="https://github.com/bogez/pace">Source</a> ·
+      <a href="https://github.com/bogez/pace/blob/main/TRUST.md">Trust policy</a></p>
+  </footer>
+
+  <script type="module" src="app/tracker.js"></script>
+</body>
+</html>

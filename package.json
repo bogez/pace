@@ -1,6 +1,6 @@
 {
   "name": "pace",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A fuel gauge for your AI subscription — one glance tells you if you're in the zone.",
   "type": "module",
   "private": true,

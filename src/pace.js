@@ -52,10 +52,14 @@ export const PALETTE = Object.freeze({
  * @param {number} elapsed - time since the window started (any unit)
  * @param {number} window - total window length (same unit as elapsed)
  * @returns {number} usagePct − expected%
- * @throws {RangeError} when window ≤ 0
+ * @throws {RangeError} when window ≤ 0 or elapsed < 0
  */
 export function paceDelta(usagePct, elapsed, window) {
   if (window <= 0) throw new RangeError("window must be > 0");
+  // Negative elapsed is a caller bug (a clock went backwards, a reset was
+  // mis-set). Refuse rather than extrapolate: a confident wrong answer is
+  // worse than an error (charter principle 3). Decided in bogez/pace#4.
+  if (elapsed < 0) throw new RangeError("elapsed must be >= 0");
   return usagePct - (elapsed / window) * 100;
 }
 

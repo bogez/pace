@@ -30,6 +30,20 @@ These are merge requirements, not suggestions:
    changes update the checks that guard them.
 4. **CI must be green** and a maintainer reviews before merge.
 
+## Accessibility checklist (required for every UI PR)
+
+Charter principle 2 — never color alone — is a merge requirement. Before opening a UI PR:
+
+- [ ] Every state has a non-color channel (glyph, label, position) — color may repeat
+      information, never carry it alone
+- [ ] Color rides on swatches/surfaces, not on text (colored text can't hold AA contrast
+      across the whole ramp)
+- [ ] The full flow works with keyboard only, with visible focus (`:focus-visible`)
+- [ ] Text meets WCAG AA contrast in both light and dark themes
+- [ ] Live regions announce only real changes (no re-announcing on timers)
+- [ ] Animations respect `prefers-reduced-motion`
+- [ ] `npm run test:e2e` passes — it includes axe audits and a keyboard walkthrough
+
 ## Running things locally
 
 ```sh

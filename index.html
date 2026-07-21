@@ -20,7 +20,8 @@
   <main>
     <!-- The answer: one glance, one color, no math -->
     <section id="meter" class="card meter" aria-live="polite">
-      <div id="dot" class="dot" role="img" aria-label="pace state"></div>
+      <!-- Decorative: the state text below is the accessible channel -->
+      <div id="dot" class="dot" aria-hidden="true"></div>
       <p class="state"><span id="glyph" class="glyph">●</span> <span id="state-name">no data yet</span></p>
       <p id="delta-line" class="delta-line">Log your first check-in below to get a color.</p>
       <p id="forecast-line" class="forecast-line"></p>

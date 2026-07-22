@@ -83,6 +83,7 @@ const els = {
   sessionResets: $("session-resets"),
   sessionLine: $("session-line"),
   sourceLine: $("source-line"),
+  meter: $("meter"),
   spectrum: $("spectrum"),
   needle: $("needle"),
   stateDesc: $("state-desc"),
@@ -175,11 +176,13 @@ function render() {
 
   if (!reading) {
     els.dot.style.background = "";
+    els.meter.style.removeProperty("--pace-ink");
     els.needle.hidden = true;
     els.spectrum.classList.add("empty");
     els.spectrum.classList.remove("stale");
     setText(els.stateDesc, "");
     setText(els.glyph, "●");
+    els.glyph.classList.add("dup"); // visually redundant next to the gray dot
     setText(els.stateName, "no data yet");
     setText(
       els.deltaLine,
@@ -209,7 +212,13 @@ function render() {
     els.dot.classList.toggle("stale", tier === "stale");
     // Estimated: dashed outline + "≈" + source line (TRUST.md commitment 5).
     els.dot.classList.toggle("estimated", reading.estimated);
+    // The headline tint (prototype look): large bold text at WCAG large-text
+    // contrast; the light theme mixes it toward ink in CSS. Words + glyph
+    // remain the color-independent channel (#8).
+    els.meter.style.setProperty("--pace-ink", paceColor(delta));
     setText(els.glyph, st.glyph);
+    // "●" would visually duplicate the dot beside it; directions still show.
+    els.glyph.classList.toggle("dup", st.glyph === "●");
     setText(els.stateName, tier === "stale" ? `probably ${st.name}` : st.name);
     setText(els.stateDesc, DESCRIPTORS[st.name] ? ` — ${DESCRIPTORS[st.name]}` : "");
     const pctLabel = reading.estimated
@@ -217,7 +226,7 @@ function render() {
       : `${reading.pct}% used`;
     setText(
       els.deltaLine,
-      `${pctLabel}, ${win.elapsedPct.toFixed(0)}% of the week elapsed — ${fmtDelta(delta)}`
+      `${pctLabel} · ${win.elapsedPct.toFixed(1)}% expected · delta ${delta > 0 ? "+" : ""}${delta.toFixed(1)}`
     );
     setText(
       els.sourceLine,
@@ -229,25 +238,25 @@ function render() {
     const f = forecast(reading.pct, win.elapsedHours, WEEK_HOURS);
     if (!f) {
       setText(els.forecastLine, "");
-    } else if (f.runsOut) {
-      const short = WEEK_HOURS - win.elapsedHours - f.unitsToExhaustion;
-      setText(
-        els.forecastLine,
-        `At your average pace you hit 100% about ${fmtHours(short)} before the reset.`
-      );
     } else {
-      setText(
-        els.forecastLine,
-        `At your average pace you'd end the week at ${Math.round(f.projectedPct)}% — ` +
-          (f.projectedPct < 85 ? "you can afford to push." : "cutting it close.")
-      );
-    }
-    if (f && tier === "stale") {
-      setText(
-        els.forecastLine,
-        els.forecastLine.textContent +
-          ` (Based on ${reading.estimated ? "a sensor snapshot" : "a check-in"} ${fmtHours(age)} ago.)`
-      );
+      // The number is <strong> (prototype look); text around it stays muted.
+      let pre, num, post;
+      if (f.runsOut) {
+        const short = WEEK_HOURS - win.elapsedHours - f.unitsToExhaustion;
+        pre = "At your average pace you hit 100% about ";
+        num = fmtHours(short);
+        post = " before the reset.";
+      } else {
+        pre = "At your average pace you'd end the week at ";
+        num = `${Math.round(f.projectedPct)}%`;
+        post = f.projectedPct < 85 ? " — you can afford to push." : " — cutting it close.";
+      }
+      if (tier === "stale") {
+        post += ` (Based on ${reading.estimated ? "a sensor snapshot" : "a check-in"} ${fmtHours(age)} ago.)`;
+      }
+      const strong = document.createElement("strong");
+      strong.textContent = num;
+      els.forecastLine.replaceChildren(pre, strong, post);
     }
 
     const what = reading.estimated ? "Sensor snapshot" : "Checked in";

@@ -1,7 +1,7 @@
 {
   "name": "Pace — am I in the zone?",
   "short_name": "Pace",
-  "description": "A fuel gauge for your AI subscription. One glance, one color, no math.",
+  "description": "A pace meter for your AI subscription. One glance, one color, no math.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

@@ -2,7 +2,7 @@
 
 ## Vision
 
-**A fuel gauge for your AI subscription.** AI plans give you a usage percentage; Pace does
+**A pace meter for your AI subscription.** AI plans give you a usage percentage; Pace does
 the math you'd otherwise do in your head and answers one question at a glance: *am I in the
 zone?* Green means your burn matches your billing window. Red means you'll hit the cap
 early. Blue means headroom you're leaving on the table. One glance, one color, no math.

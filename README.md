@@ -1,6 +1,6 @@
 # Pace
 
-**A fuel gauge for your AI subscription.**
+**A pace meter for your AI subscription.**
 
 AI plans give you a usage percentage — but a raw number forces you to do math. *53% used…
 on day 5… of a week that resets Thursday… is that good?* Pace does the math and answers

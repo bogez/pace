@@ -6,7 +6,7 @@
   <title>Pace — am I in the zone?</title>
   <meta name="description" content="A fuel gauge for your AI subscription. One glance, one color, no math." />
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#1a1a19" />
+  <meta name="theme-color" content="#0c0e0d" />
   <link rel="icon" type="image/png" sizes="192x192" href="app/icons/icon-192.png" />
   <link rel="apple-touch-icon" href="app/icons/icon-192.png" />
   <link rel="stylesheet" href="app/tracker.css" />
@@ -18,12 +18,23 @@
   </header>
 
   <main>
-    <!-- The answer: one glance, one color, no math -->
+    <!-- The answer: one glance, one color, no math (#46: spectrum-bar hero) -->
     <section id="meter" class="card meter" aria-live="polite">
-      <!-- Decorative: the state text below is the accessible channel -->
-      <div id="dot" class="dot" aria-hidden="true"></div>
-      <p class="state"><span id="glyph" class="glyph">●</span> <span id="state-name">no data yet</span></p>
-      <p id="delta-line" class="delta-line">Log your first check-in below to get a color.</p>
+      <p class="card-label" aria-hidden="true">Weekly pace</p>
+      <!-- Decorative: the state text below is the accessible channel. The
+           band's gradient and the needle mapping delta −50…+50 → 0…100% are
+           ported verbatim from the accepted prototype meter (#46). -->
+      <div id="spectrum" class="band" aria-hidden="true">
+        <span class="zone-tick"></span>
+        <div id="needle" class="needle" hidden></div>
+      </div>
+      <div class="band-labels" aria-hidden="true">
+        <span>cold −50</span><span>in the zone</span><span>danger +50</span>
+      </div>
+      <div class="readout">
+        <p class="state"><span id="dot" class="dot" aria-hidden="true"></span><span id="glyph" class="glyph">●</span><span id="state-name">no data yet</span><span id="state-desc" class="state-desc"></span></p>
+        <p id="delta-line" class="delta-line">Log your first check-in below to get a color.</p>
+      </div>
       <p id="forecast-line" class="forecast-line"></p>
       <p id="source-line" class="source-line"></p>
       <p id="age-line" class="age-line"></p>

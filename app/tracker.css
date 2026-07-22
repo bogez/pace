@@ -1,21 +1,28 @@
-/* Pace tracker. No framework, no build — view source is the audit. */
+/* Pace tracker. No framework, no build — view source is the audit.
+   Visual language per the #46 design pass: spectrum-bar hero (the prototype's
+   Weekly Pace meter) over Instrument-style tool cards. Dark-first; light
+   theme holds the same AA contrast. Color never carries meaning alone. */
 
 :root {
-  --bg: #f6f7f4;
-  --card: #ffffff;
-  --ink: #1c2321;
-  --muted: #5c6662;
-  --line: #e3e6e1;
-  --danger: #b3261e;
+  --bg: #0c0e0d;
+  --card: #131715;
+  --inset: #161b18;
+  --ink: #e8ebe8;
+  --muted: #9aa39e;
+  --faint: #7d867f;
+  --line: #242b26;
+  --danger: #ffb4ab;
 }
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --bg: #131715;
-    --card: #1c211e;
-    --ink: #e8ebe8;
-    --muted: #9aa39e;
-    --line: #2a302c;
-    --danger: #ffb4ab;
+    --bg: #f6f7f4;
+    --card: #ffffff;
+    --inset: #f0f2ee;
+    --ink: #1c2321;
+    --muted: #5c6662;
+    --faint: #5c6662; /* AA on the light bg needs the full muted ink */
+    --line: #e3e6e1;
+    --danger: #b3261e;
   }
 }
 
@@ -31,77 +38,200 @@ body {
 }
 
 header { text-align: center; margin-bottom: 1rem; }
-h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.02em; }
-.tagline { margin: 0.1rem 0 0; color: var(--muted); font-size: 0.95rem; }
-h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
+h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.04em; }
+.tagline { margin: 0.1rem 0 0; color: var(--muted); font-size: 0.9rem; }
+h2 { font-size: 0.95rem; margin: 0 0 0.4rem; }
 .muted { color: var(--muted); font-weight: normal; font-size: 0.85em; }
 
 .card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 1rem 1.1rem;
-  margin-bottom: 0.9rem;
+  padding: 1rem 1.2rem;
+  margin-bottom: 0.8rem;
+}
+.card-label {
+  margin: 0 0 1rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
 }
 
-/* ---- the meter ---- */
-.meter { text-align: center; padding: 1.5rem 1.1rem; }
-.dot {
-  width: 84px;
-  height: 84px;
-  margin: 0 auto 0.6rem;
+/* ---- the hero meter (#46) — ported verbatim from the prototype demo ---- */
+.meter { padding: 1.2rem 1.4rem 1.3rem; }
+
+/* The band: full spectrum with green exactly at center (delta 0). The needle
+   mapping is linear over −50…+50, so the asymmetric zone boundaries (full red
+   at +25, full blue at −50) live in the color function, not the geometry —
+   the prototype's accepted trade for a legible spectrum. */
+.band {
+  position: relative;
+  height: 26px;
+  border-radius: 13px;
+  background: linear-gradient(90deg,
+    #1c5cab 0%, #3987e5 22%, #35a24f 40%, #0ca30c 50%, #35a24f 60%,
+    #fab219 76%, #ec835a 87%, #d03b3b 100%);
+}
+.band.empty { filter: grayscale(0.85); opacity: 0.4; }
+.band.stale { filter: saturate(0.35); opacity: 0.7; }
+.zone-tick {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 2px;
+  left: 50%;
+  background: var(--card);
+}
+.needle {
+  position: absolute;
+  top: 2px;
+  width: 20px;
+  height: 42px;
+  margin-left: -10px;
+}
+.needle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 8px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.55);
+}
+.needle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  background: #fff;
   border-radius: 50%;
-  background: #9aa39e; /* replaced by the engine's color at runtime */
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.55);
 }
 @media (prefers-reduced-motion: no-preference) {
+  .needle { transition: left 0.25s ease; }
   .dot { transition: background 0.6s ease; }
 }
-.state { margin: 0; font-size: 1.25rem; font-weight: 600; }
-.glyph { font-size: 1.05em; }
-.delta-line { margin: 0.25rem 0 0; color: var(--muted); }
-.forecast-line { margin: 0.6rem 0 0; font-size: 0.95rem; }
-.age-line { margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--muted); }
-.source-line { margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--muted); }
-.dot.estimated { outline: 3px dashed var(--muted); outline-offset: 4px; }
-textarea {
-  font: inherit;
-  color: inherit;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0.45rem 0.6rem;
-  width: 100%;
-  resize: vertical;
-}
-.dot.stale {
-  filter: saturate(0.35);
-  opacity: 0.75;
-  transform: scale(0.88);
+.band-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.1rem;
+  font-size: 0.7rem;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
 }
 
-/* ---- forms ---- */
-label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.15rem; }
-input, select {
+/* Readout: big tinted headline + muted numbers on one baseline. The tint is
+   large bold text (26px/700 ⇒ WCAG large-text 3:1), and the light theme mixes
+   the pace color toward ink so every ramp stop still clears it — the glyph
+   and words remain the color-independent channel (#8). */
+.readout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+  margin-top: 1.1rem;
+  flex-wrap: wrap;
+}
+.state {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--pace-ink, var(--muted));
+}
+@media (prefers-color-scheme: light) {
+  .state { color: color-mix(in srgb, var(--pace-ink, var(--muted)), #1c2321 40%); }
+}
+.state-desc { font-weight: 700; }
+#state-name { display: inline-block; }
+#state-name::first-letter { text-transform: uppercase; }
+.glyph { font-size: 0.7em; }
+.glyph.dup { display: none; } /* "●" duplicates the dot; arrows stay */
+.dot {
+  flex: none;
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--muted); /* replaced by the engine's color at runtime */
+}
+.dot.estimated { outline: 2px dashed var(--muted); outline-offset: 3px; }
+.dot.stale { filter: saturate(0.35); opacity: 0.75; }
+
+.delta-line { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.forecast-line {
+  margin: 0.65rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.forecast-line strong { color: var(--ink); font-weight: 600; }
+.forecast-line:empty { display: none; }
+.age-line { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--faint); }
+.source-line { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.source-line:empty, .age-line:empty { display: none; }
+
+/* ---- session ring ---- */
+.session-line { margin: 0.7rem 0 0; font-size: 0.95rem; display: flex; align-items: center; gap: 0.6rem; }
+.ring {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+}
+.ring-hole {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--card);
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- forms & tool cards ---- */
+label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.2rem; }
+input, select, textarea {
   font: inherit;
   color: inherit;
-  background: var(--bg);
+  background: var(--inset);
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 0.45rem 0.6rem;
+  padding: 0.45rem 0.7rem;
   width: 100%;
 }
+textarea { resize: vertical; }
 form { margin: 0; }
 #checkin-form { display: flex; gap: 0.6rem; align-items: flex-end; }
 #checkin-form label { flex: 1 1 auto; margin: 0; }
-#checkin-form input { margin-top: 0.15rem; }
+#checkin-form input { margin-top: 0.2rem; }
 .row { display: flex; gap: 0.6rem; align-items: flex-end; }
 .row > span { flex: 1; }
 
 button {
   font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 0.45rem 0.9rem;
+  padding: 0.45rem 1rem;
   background: var(--ink);
   color: var(--bg);
   cursor: pointer;
@@ -119,23 +249,22 @@ button:hover { opacity: 0.9; }
   border-radius: 50%;
   vertical-align: baseline;
 }
-.hint { font-size: 0.85rem; color: var(--muted); margin: 0 0 0.6rem; }
+.hint { font-size: 0.82rem; color: var(--muted); margin: 0 0 0.6rem; }
 code { font-size: 0.9em; }
 
-details summary { cursor: pointer; list-style-position: outside; }
-details summary h2 { display: inline; }
+details summary { cursor: pointer; list-style-position: outside; color: var(--muted); }
+details summary h2 { display: inline; color: var(--ink); }
 details[open] summary { margin-bottom: 0.5rem; }
 
-.session-line { margin: 0.6rem 0 0; font-size: 0.95rem; }
-
 /* ---- history ---- */
-#history { list-style: none; margin: 0; padding: 0; font-size: 0.9rem; }
+#history { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; }
 #history li {
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.3rem 0;
+  padding: 0.35rem 0;
   border-top: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
 }
 #history li:first-child { border-top: none; }
 #history .when { color: var(--muted); }
@@ -147,5 +276,5 @@ footer { text-align: center; margin-top: 1.5rem; }
   color: var(--danger);
   border-color: var(--danger);
 }
-.fine { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
+.fine { font-size: 0.78rem; color: var(--faint); margin-top: 0.8rem; }
 .fine a { color: inherit; }

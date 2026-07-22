@@ -10,7 +10,7 @@
  * old caches on activate.
  */
 
-const VERSION = "pace-v3";
+const VERSION = "pace-v4";
 const SHELL = [
   "./",
   "index.html",

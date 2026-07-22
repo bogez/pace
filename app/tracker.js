@@ -83,6 +83,9 @@ const els = {
   sessionResets: $("session-resets"),
   sessionLine: $("session-line"),
   sourceLine: $("source-line"),
+  spectrum: $("spectrum"),
+  needle: $("needle"),
+  stateDesc: $("state-desc"),
   sensorPaste: $("sensor-paste"),
   sensorFile: $("sensor-file"),
   sensorImport: $("sensor-import"),
@@ -99,6 +102,17 @@ const els = {
 
 const fmtDelta = (d) =>
   `${d > 0 ? "+" : ""}${d.toFixed(1)} points vs. expected pace`;
+
+// Headline descriptors (#46) — presentation only; the engine's state names
+// stay the accessible channel and the test contract.
+const DESCRIPTORS = {
+  overheating: "over the line",
+  "running hot": "burning fast",
+  warm: "a bit fast",
+  "in the zone": "perfect pace",
+  cool: "headroom",
+  cold: "deep headroom",
+};
 
 const fmtHours = (h) => {
   if (h < 1) return `${Math.round(h * 60)} min`;
@@ -161,6 +175,10 @@ function render() {
 
   if (!reading) {
     els.dot.style.background = "";
+    els.needle.hidden = true;
+    els.spectrum.classList.add("empty");
+    els.spectrum.classList.remove("stale");
+    setText(els.stateDesc, "");
     setText(els.glyph, "●");
     setText(els.stateName, "no data yet");
     setText(
@@ -181,13 +199,19 @@ function render() {
     const tier = stalenessTier(age);
 
     els.dot.style.background = paceColor(delta);
-    // Stale: every channel degrades, not just color — desaturated dot,
-    // "probably" in the words, qualified forecast (#9, charter principle 3).
+    // The needle sits at the delta on the −50…+50 spectrum (#46).
+    els.needle.hidden = false;
+    els.needle.style.left = `${Math.min(Math.max(delta, -50), 50) + 50}%`;
+    els.spectrum.classList.remove("empty");
+    // Stale: every channel degrades, not just color — desaturated dot AND
+    // spectrum, "probably" in the words, qualified forecast (#9, principle 3).
+    els.spectrum.classList.toggle("stale", tier === "stale");
     els.dot.classList.toggle("stale", tier === "stale");
     // Estimated: dashed outline + "≈" + source line (TRUST.md commitment 5).
     els.dot.classList.toggle("estimated", reading.estimated);
     setText(els.glyph, st.glyph);
     setText(els.stateName, tier === "stale" ? `probably ${st.name}` : st.name);
+    setText(els.stateDesc, DESCRIPTORS[st.name] ? ` — ${DESCRIPTORS[st.name]}` : "");
     const pctLabel = reading.estimated
       ? `≈${reading.pct.toFixed(0)}% used (estimated)`
       : `${reading.pct}% used`;
@@ -261,13 +285,19 @@ function renderSession(now) {
   }
   const delta = paceDelta(state.session.pct, sw.elapsedHours, SESSION_HOURS);
   const st = paceState(delta);
-  // Color rides on a swatch, never on the text — colored text can't hold AA
+  // Color rides on the ring, never on the text — colored text can't hold AA
   // contrast across the whole ramp, and the words must stay readable (#8).
-  const swatch = document.createElement("span");
-  swatch.className = "swatch";
-  swatch.style.background = paceColor(delta);
+  // The ring's arc is the session's usage %, its color the session pace (#46).
+  const ring = document.createElement("span");
+  ring.className = "ring";
+  ring.setAttribute("aria-hidden", "true");
+  ring.style.background = `conic-gradient(${paceColor(delta)} ${state.session.pct}%, var(--line) 0)`;
+  const hole = document.createElement("span");
+  hole.className = "ring-hole";
+  hole.textContent = `${Math.round(state.session.pct)}%`;
+  ring.append(hole);
   els.sessionLine.replaceChildren(
-    swatch,
+    ring,
     ` ${st.glyph} ${st.name} — ${state.session.pct}% used, ` +
       `${fmtHours(SESSION_HOURS - sw.elapsedHours)} until the session resets`
   );

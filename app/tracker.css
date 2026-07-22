@@ -1,21 +1,28 @@
-/* Pace tracker. No framework, no build — view source is the audit. */
+/* Pace tracker. No framework, no build — view source is the audit.
+   Visual language per the #46 design pass: spectrum-bar hero (the prototype's
+   Weekly Pace meter) over Instrument-style tool cards. Dark-first; light
+   theme holds the same AA contrast. Color never carries meaning alone. */
 
 :root {
-  --bg: #f6f7f4;
-  --card: #ffffff;
-  --ink: #1c2321;
-  --muted: #5c6662;
-  --line: #e3e6e1;
-  --danger: #b3261e;
+  --bg: #0c0e0d;
+  --card: #131715;
+  --inset: #161b18;
+  --ink: #e8ebe8;
+  --muted: #9aa39e;
+  --faint: #7d867f;
+  --line: #242b26;
+  --danger: #ffb4ab;
 }
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --bg: #131715;
-    --card: #1c211e;
-    --ink: #e8ebe8;
-    --muted: #9aa39e;
-    --line: #2a302c;
-    --danger: #ffb4ab;
+    --bg: #f6f7f4;
+    --card: #ffffff;
+    --inset: #f0f2ee;
+    --ink: #1c2321;
+    --muted: #5c6662;
+    --faint: #5c6662; /* AA on the light bg needs the full muted ink */
+    --line: #e3e6e1;
+    --danger: #b3261e;
   }
 }
 
@@ -31,77 +38,176 @@ body {
 }
 
 header { text-align: center; margin-bottom: 1rem; }
-h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.02em; }
-.tagline { margin: 0.1rem 0 0; color: var(--muted); font-size: 0.95rem; }
-h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
+h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.04em; }
+.tagline { margin: 0.1rem 0 0; color: var(--muted); font-size: 0.9rem; }
+h2 { font-size: 0.95rem; margin: 0 0 0.4rem; }
 .muted { color: var(--muted); font-weight: normal; font-size: 0.85em; }
 
 .card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 1rem 1.1rem;
-  margin-bottom: 0.9rem;
+  padding: 1rem 1.2rem;
+  margin-bottom: 0.8rem;
+}
+.card-label {
+  margin: 0 0 1rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
 }
 
-/* ---- the meter ---- */
-.meter { text-align: center; padding: 1.5rem 1.1rem; }
-.dot {
-  width: 84px;
-  height: 84px;
-  margin: 0 auto 0.6rem;
+/* ---- the hero meter (#46) ---- */
+.meter { padding: 1.2rem 1.4rem 1.3rem; }
+
+/* Spectrum bar: delta −50…+50 drawn to scale. Green zone 45–55%, yellow at
+   65% (+15), full red at 75% (+25) — the red side ramps 2× steeper than the
+   blue side, matching the engine's ZONES/PALETTE exactly. */
+.spectrum {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(90deg,
+    rgb(57,135,229) 0%,      /* −50 blue  */
+    rgb(32,154,143) 25%,     /* −25 teal  */
+    rgb(12,163,12) 45%,      /*  −5 green */
+    rgb(12,163,12) 55%,      /*  +5 green */
+    rgb(250,178,25) 65%,     /* +15 yellow */
+    rgb(208,59,59) 75%,      /* +25 red   */
+    rgb(208,59,59) 100%);
+}
+.spectrum.empty { filter: grayscale(0.85); opacity: 0.4; }
+.spectrum.stale { filter: saturate(0.35); opacity: 0.7; }
+.zone-tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.5);
+}
+.needle {
+  position: absolute;
+  top: -6px;
+  height: 26px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 0 0 3px var(--card);
+}
+.needle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 9px;
+  height: 9px;
+  transform: translateX(-50%);
   border-radius: 50%;
-  background: #9aa39e; /* replaced by the engine's color at runtime */
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--card);
 }
 @media (prefers-reduced-motion: no-preference) {
+  .needle { transition: left 0.6s ease; }
   .dot { transition: background 0.6s ease; }
 }
-.state { margin: 0; font-size: 1.25rem; font-weight: 600; }
-.glyph { font-size: 1.05em; }
-.delta-line { margin: 0.25rem 0 0; color: var(--muted); }
-.forecast-line { margin: 0.6rem 0 0; font-size: 0.95rem; }
-.age-line { margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--muted); }
-.source-line { margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--muted); }
-.dot.estimated { outline: 3px dashed var(--muted); outline-offset: 4px; }
-textarea {
-  font: inherit;
-  color: inherit;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0.45rem 0.6rem;
-  width: 100%;
-  resize: vertical;
+@media (prefers-color-scheme: light) {
+  .needle, .needle::after { background: #1c2321; }
+  .zone-tick { background: rgba(255, 255, 255, 0.75); }
 }
-.dot.stale {
-  filter: saturate(0.35);
-  opacity: 0.75;
-  transform: scale(0.88);
+.spectrum-labels {
+  display: flex;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.spectrum-labels span { flex: 1; }
+.spectrum-labels span:nth-child(2) { text-align: center; }
+.spectrum-labels span:nth-child(3) { text-align: right; }
+
+.state { margin: 1.4rem 0 0; font-size: 1.45rem; font-weight: 700; letter-spacing: -0.01em; }
+.state-desc { font-weight: 400; color: var(--muted); }
+.glyph { font-size: 0.85em; }
+.dot {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  vertical-align: baseline;
+  background: var(--muted); /* replaced by the engine's color at runtime */
+}
+.dot.estimated { outline: 2px dashed var(--muted); outline-offset: 3px; }
+.dot.stale { filter: saturate(0.35); opacity: 0.75; }
+
+.delta-line { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.95rem; }
+.forecast-line {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem 0.9rem;
+  background: var(--inset);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 0.95rem;
+}
+.forecast-line:empty { display: none; }
+.age-line { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--faint); }
+.source-line { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.source-line:empty, .age-line:empty { display: none; }
+
+/* ---- session ring ---- */
+.session-line { margin: 0.7rem 0 0; font-size: 0.95rem; display: flex; align-items: center; gap: 0.6rem; }
+.ring {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+}
+.ring-hole {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--card);
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
-/* ---- forms ---- */
-label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.15rem; }
-input, select {
+/* ---- forms & tool cards ---- */
+label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.2rem; }
+input, select, textarea {
   font: inherit;
   color: inherit;
-  background: var(--bg);
+  background: var(--inset);
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 0.45rem 0.6rem;
+  padding: 0.45rem 0.7rem;
   width: 100%;
 }
+textarea { resize: vertical; }
 form { margin: 0; }
 #checkin-form { display: flex; gap: 0.6rem; align-items: flex-end; }
 #checkin-form label { flex: 1 1 auto; margin: 0; }
-#checkin-form input { margin-top: 0.15rem; }
+#checkin-form input { margin-top: 0.2rem; }
 .row { display: flex; gap: 0.6rem; align-items: flex-end; }
 .row > span { flex: 1; }
 
 button {
   font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 0.45rem 0.9rem;
+  padding: 0.45rem 1rem;
   background: var(--ink);
   color: var(--bg);
   cursor: pointer;
@@ -119,23 +225,22 @@ button:hover { opacity: 0.9; }
   border-radius: 50%;
   vertical-align: baseline;
 }
-.hint { font-size: 0.85rem; color: var(--muted); margin: 0 0 0.6rem; }
+.hint { font-size: 0.82rem; color: var(--muted); margin: 0 0 0.6rem; }
 code { font-size: 0.9em; }
 
-details summary { cursor: pointer; list-style-position: outside; }
-details summary h2 { display: inline; }
+details summary { cursor: pointer; list-style-position: outside; color: var(--muted); }
+details summary h2 { display: inline; color: var(--ink); }
 details[open] summary { margin-bottom: 0.5rem; }
 
-.session-line { margin: 0.6rem 0 0; font-size: 0.95rem; }
-
 /* ---- history ---- */
-#history { list-style: none; margin: 0; padding: 0; font-size: 0.9rem; }
+#history { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; }
 #history li {
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.3rem 0;
+  padding: 0.35rem 0;
   border-top: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
 }
 #history li:first-child { border-top: none; }
 #history .when { color: var(--muted); }
@@ -147,5 +252,5 @@ footer { text-align: center; margin-top: 1.5rem; }
   color: var(--danger);
   border-color: var(--danger);
 }
-.fine { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
+.fine { font-size: 0.78rem; color: var(--faint); margin-top: 0.8rem; }
 .fine a { color: inherit; }

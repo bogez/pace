@@ -10,7 +10,7 @@
  * old caches on activate.
  */
 
-const VERSION = "pace-v2";
+const VERSION = "pace-v3";
 const SHELL = [
   "./",
   "index.html",
@@ -18,6 +18,8 @@ const SHELL = [
   "app/tracker.js",
   "app/window.js",
   "app/calibration.js",
+  "app/tray-format.js",
+  "app/tray.js",
   "sensors/weights.mjs",
   "src/pace.js",
   "manifest.webmanifest",

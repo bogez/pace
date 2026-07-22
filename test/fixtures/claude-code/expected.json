@@ -1,0 +1,60 @@
+{
+  "_comment": "Cross-implementation contract (bogez/pace#15): both the JS parser and the Rust port must reproduce result exactly from files under the given windows. Regenerate only via scripts/gen-expected.mjs.",
+  "weekStart": "2026-07-16T05:00:00.000Z",
+  "sessionStart": "2026-07-21T07:00:00.000Z",
+  "files": [
+    "week-main.jsonl",
+    "week-other.jsonl"
+  ],
+  "result": {
+    "week": {
+      "input": 3100,
+      "output": 1300,
+      "cacheWrite": 400,
+      "cacheRead": 10000,
+      "weighted": 11100,
+      "count": 4
+    },
+    "session": {
+      "input": 2000,
+      "output": 100,
+      "cacheWrite": 0,
+      "cacheRead": 0,
+      "weighted": 2500,
+      "count": 1
+    },
+    "byModel": {
+      "claude-sonnet-5": {
+        "input": 3000,
+        "output": 300,
+        "cacheWrite": 400,
+        "cacheRead": 10000,
+        "weighted": 6000,
+        "count": 2
+      },
+      "claude-opus-4-8": {
+        "input": 0,
+        "output": 1000,
+        "cacheWrite": 0,
+        "cacheRead": 0,
+        "weighted": 5000,
+        "count": 1
+      },
+      "unknown": {
+        "input": 100,
+        "output": 0,
+        "cacheWrite": 0,
+        "cacheRead": 0,
+        "weighted": 100,
+        "count": 1
+      }
+    },
+    "hourly": {
+      "2026-07-18T10": 3500,
+      "2026-07-21T08": 2500,
+      "2026-07-20T23": 5000,
+      "2026-07-19T12": 100
+    },
+    "events": 4
+  }
+}

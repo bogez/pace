@@ -16,6 +16,7 @@ import { paceDelta, paceColor, paceState, forecast } from "../src/pace.js";
 import { weeklyWindow, sessionWindow, stalenessTier, hoursBetween, WEEK_HOURS, SESSION_HOURS } from "./window.js";
 import { observe, estimatePct, recompute, emptyCalibration, weightedFromRaw } from "./calibration.js";
 import { WEIGHTS_VERSION } from "../sensors/weights.mjs";
+import { trayState } from "./tray-format.js";
 
 /* ---------------- storage ---------------- */
 
@@ -239,6 +240,10 @@ function render() {
   renderSession(now);
   renderSensor(now, win);
   renderHistory(win);
+
+  // The tray bridge (app/tray.js) listens for this; in a plain browser
+  // nothing does and the event evaporates.
+  dispatchEvent(new CustomEvent("pace:reading", { detail: trayState(reading, win, now) }));
 }
 
 function renderSession(now) {
@@ -376,6 +381,14 @@ els.checkinForm.addEventListener("submit", (e) => {
   // After render, so renderSensor doesn't immediately overwrite the feedback;
   // the next 30 s tick restores the regular sensor line.
   if (calibrationNote) setText(els.sensorLine, calibrationNote);
+});
+
+// Programmatic import — the tray's auto-refresh (app/tray.js) goes through
+// the same parse/validate/store path as a manual paste.
+addEventListener("pace:sensor-json", (e) => {
+  const err = importSensorJson(e.detail);
+  if (err) setText(els.sensorLine, err);
+  else render();
 });
 
 els.sensorImport.addEventListener("click", () => {

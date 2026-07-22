@@ -1,0 +1,12 @@
+[package]
+name = "pace-sensor"
+version = "0.3.0"
+description = "Pace — Claude Code transcript sensor (Rust port of sensors/parse-transcripts.mjs)"
+edition = "2021"
+license = "MIT"
+
+# Kept deliberately light: serde/serde_json only, so the parity suite runs
+# anywhere cargo does — no GTK, no Tauri, no clock/network/crypto crates.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

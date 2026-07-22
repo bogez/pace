@@ -1,0 +1,7 @@
+dist/
+node_modules/
+target/
+Cargo.lock
+src-tauri/icons/
+src-tauri/gen/
+app-icon.png

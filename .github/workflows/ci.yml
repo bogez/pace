@@ -16,6 +16,19 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  # Cross-implementation contract (docs/design/tray-sensor.md): the Rust
+  # parser port must match the JS reference against the shared fixtures.
+  sensor-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tray/sensor-rs
+      - run: cargo test
+        working-directory: apps/tray/sensor-rs
+
   e2e:
     runs-on: ubuntu-latest
     steps:

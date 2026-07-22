@@ -119,9 +119,12 @@
   </footer>
 
   <script type="module" src="app/tracker.js"></script>
+  <!-- Tauri bridge: a no-op in the browser (bogez/pace#16) -->
+  <script type="module" src="app/tray.js"></script>
   <script>
     // Offline support (#6). Same-origin only — see sw.js and TRUST.md.
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
+    if ("serviceWorker" in navigator && !window.__TAURI__)
+      navigator.serviceWorker.register("./sw.js");
   </script>
 </body>
 </html>

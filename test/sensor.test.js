@@ -94,3 +94,14 @@ test("empty input yields clean zeros", () => {
 test("weights v1 are the documented values", () => {
   assert.deepEqual(WEIGHTS, { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 });
 });
+
+test("output matches expected.json — the cross-implementation contract", () => {
+  // The Rust port (apps/tray/sensor-rs, docs/design/tray-sensor.md) is pinned
+  // to the same file by its parity suite. Regenerate deliberately via
+  // scripts/gen-expected.mjs; a diff here is a contract change.
+  const expected = JSON.parse(readFileSync(join(dir, "expected.json"), "utf8"));
+  assert.deepEqual(expected.files, ["week-main.jsonl", "week-other.jsonl"]);
+  assert.equal(Date.parse(expected.weekStart), weekStart.getTime());
+  assert.equal(Date.parse(expected.sessionStart), sessionStart.getTime());
+  assert.deepEqual(run(), expected.result);
+});

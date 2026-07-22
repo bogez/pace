@@ -1,0 +1,107 @@
+# Release CI (bogez/pace#17): 4-platform installer builds, in public — anyone
+# can audit the code and watch the build that produced the binary they
+# download (TRUST.md). Ported from the prototype's working workflow, which
+# embeds paid-for lessons: the exact Ubuntu 22.04 package list (ayatana, not
+# libappindicator3), icons from the pure-Node generator (no ImageMagick),
+# checkout@v5/setup-node@v5 with Node 24.
+#
+# Triggers:
+# - tag push v*  → builds all 4 targets and drafts a release (a human
+#   publishes it — tags and publishing stay human actions)
+# - workflow_dispatch → smoke-build without a release, artifacts uploaded to
+#   the run, so the matrix can be proven green before any tag exists
+
+name: Build & release tray app
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest        # Apple Silicon
+            args: "--target aarch64-apple-darwin"
+          - platform: macos-latest        # Intel
+            args: "--target x86_64-apple-darwin"
+          - platform: ubuntu-22.04
+            args: ""
+          - platform: windows-latest
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ contains(matrix.args, 'aarch64') && 'aarch64-apple-darwin' || contains(matrix.args, 'x86_64-apple') && 'x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tray/src-tauri
+
+      - name: Install frontend deps
+        working-directory: apps/tray
+        run: npm install
+
+      - name: Generate app icons
+        working-directory: apps/tray
+        shell: bash
+        run: |
+          node ../../scripts/make-icon.mjs app-icon.png 1024
+          npx tauri icon app-icon.png
+
+      - name: Build and draft release (tag push)
+        if: github.ref_type == 'tag'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/tray
+          tagName: ${{ github.ref_name }}
+          releaseName: "Pace ${{ github.ref_name }}"
+          releaseBody: |
+            Download the installer for your platform below. macOS: .dmg · Windows: .msi/.exe · Linux: .AppImage/.deb
+
+            **These builds are unsigned — your OS will warn you.** That is expected; what you'll
+            see and why is documented in the [trust policy](https://github.com/bogez/pace/blob/main/TRUST.md#honest-limitations).
+            If that makes you uncomfortable, [the web app](https://bogez.github.io/pace/) involves no installer at all.
+            Uninstalling removes one app and one local data folder — leaving is easy and complete.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      - name: Build only (manual smoke run)
+        if: github.ref_type != 'tag'
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: apps/tray
+          args: ${{ matrix.args }}
+
+      - name: Upload smoke-run artifacts
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pace-${{ matrix.platform }}${{ contains(matrix.args, 'aarch64') && '-aarch64' || contains(matrix.args, 'x86_64-apple') && '-x86_64' || '' }}
+          path: |
+            apps/tray/src-tauri/target/**/bundle/**
+            apps/tray/src-tauri/target/**/release/pace-tray*
+          if-no-files-found: warn

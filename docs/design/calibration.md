@@ -1,5 +1,10 @@
 # Calibration: weighted tokens → estimated quota %
 
+> **Superseded as the primary source** by measured usage from Claude Code's
+> statusline ([measured-usage.md](measured-usage.md), #51). Calibration
+> remains the fallback for setups without the statusline bridge, and measured
+> snapshots now feed it automatically.
+
 **Status:** accepted — designed and decided in
 [#10](https://github.com/bogez/pace/issues/10) (see the thread for the discussion and a
 plain-language summary). Implemented across [#11](https://github.com/bogez/pace/issues/11)

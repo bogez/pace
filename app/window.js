@@ -48,6 +48,28 @@ export function weeklyWindow(now, resetDow, resetHour) {
 }
 
 /**
+ * Weekly window derived from a measured reset timestamp (bogez/pace#51):
+ * the `lengthHours` ending at `resetsAt`. Beats the configured day-of-week
+ * anchor when available, because it is the provider's own boundary — no
+ * setup, and correct even for accounts whose window doesn't land on the
+ * same wall-clock slot every week. Returns null when `now` is outside it
+ * (the reset already passed, or the timestamp is more than one window out).
+ *
+ * @param {Date} now
+ * @param {number} resetsAt - epoch ms when the window ends
+ * @param {number} lengthHours
+ * @returns {{ start: Date, elapsedHours: number, elapsedPct: number } | null}
+ */
+export function windowFromReset(now, resetsAt, lengthHours = WEEK_HOURS) {
+  const end = new Date(resetsAt);
+  if (!(end > now)) return null;
+  const start = new Date(end.getTime() - lengthHours * 3600e3);
+  if (start > now) return null;
+  const elapsedHours = hoursBetween(start, now);
+  return { start, elapsedHours, elapsedPct: (elapsedHours / lengthHours) * 100 };
+}
+
+/**
  * Position in a 5-hour session window given when /usage says it resets.
  * Returns null when the stated reset is already past (the session rolled
  * over — yesterday's number means nothing now) or is more than a session

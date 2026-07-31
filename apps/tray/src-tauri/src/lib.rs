@@ -51,6 +51,17 @@ fn set_tray(app: tauri::AppHandle, r: u8, g: u8, b: u8, tooltip: String) {
     }
 }
 
+/// Read the measured-usage file the statusline bridge tees to
+/// `~/.pace/usage.json` (sensors/statusline.mjs, bogez/pace#51). Returns
+/// None when absent. Read-only here — the bridge is the only writer; the
+/// frontend parses and validates (app/measured.js stays the source of truth).
+#[tauri::command]
+fn read_usage_file() -> Option<String> {
+    let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))?;
+    let path = std::path::PathBuf::from(home).join(".pace").join("usage.json");
+    std::fs::read_to_string(path).ok()
+}
+
 /// Parse local Claude Code transcripts into the same aggregate shape as
 /// `sensors/parse-transcripts.mjs`. The frontend supplies the window starts
 /// and weights (its `window.js` / `weights.mjs` remain the source of truth);
@@ -75,7 +86,7 @@ fn read_sensor(
 
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![set_tray, read_sensor])
+        .invoke_handler(tauri::generate_handler![set_tray, read_sensor, read_usage_file])
         .setup(|app| {
             let quit = MenuItemBuilder::with_id("quit", "Quit Pace").build(app)?;
             let menu = MenuBuilder::new(app).item(&quit).build()?;

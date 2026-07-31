@@ -64,6 +64,14 @@ if (tauri) {
       // Sensor failure is not a UI failure: the page keeps rendering the last
       // known state with its own staleness honesty.
     }
+    try {
+      // Measured usage teed by the statusline bridge (#51) — dispatched last
+      // so a fresh measurement outranks the estimate it arrives with.
+      const usage = await tauri.core.invoke("read_usage_file");
+      if (usage) dispatchEvent(new CustomEvent("pace:sensor-json", { detail: usage }));
+    } catch {
+      // Same honesty model: absence of the file is not a failure.
+    }
   };
 
   refresh();

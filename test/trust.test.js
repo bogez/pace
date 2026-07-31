@@ -19,19 +19,30 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(root, p), "utf8");
 
-const APP_FILES = ["index.html", "app/tracker.js", "app/window.js", "app/calibration.js", "src/pace.js", "sw.js"];
+const APP_FILES = [
+  "index.html",
+  "app/tracker.js",
+  "app/window.js",
+  "app/calibration.js",
+  "app/measured.js",
+  "src/pace.js",
+  "sw.js",
+];
 const SENSOR_FILES = [
   "sensors/claude-code.mjs",
   "sensors/parse-transcripts.mjs",
   "sensors/weights.mjs",
 ];
+// The statusline bridge (#51) is the one shipped file allowed to write —
+// and only its own output file, via the allowlisted APIs checked below.
+const BRIDGE_FILES = ["sensors/statusline.mjs"];
 
 // Network APIs that must not appear anywhere in shipped code. `fetch` is
 // special-cased: sw.js needs it to serve the app shell, under a guard.
 const FORBIDDEN = ["XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts"];
 
 test("TRUST 2: no network APIs in any shipped file", () => {
-  for (const file of [...APP_FILES, ...SENSOR_FILES]) {
+  for (const file of [...APP_FILES, ...SENSOR_FILES, ...BRIDGE_FILES]) {
     const text = read(file);
     for (const api of FORBIDDEN) {
       assert.ok(
@@ -85,6 +96,29 @@ test("TRUST 1: sensors are read-only — no write or delete APIs", () => {
         `${file} contains ${api} — sensors are read-only (TRUST.md commitment 1)`
       );
     }
+  }
+});
+
+test("TRUST 1: the statusline bridge writes only through allowlisted APIs", () => {
+  // The bridge tees Claude Code's statusline JSON to Pace's own usage file.
+  // It may create that file and its directory — nothing else: no deletes,
+  // no renames, no spawning, no reading user files (stdin is fd 0 only).
+  const FORBIDDEN_APIS = [
+    "appendFileSync", "createWriteStream", "unlink", "rmSync", "rmdir",
+    "rename", "spawn", "exec", "readdirSync", "statSync",
+  ];
+  for (const file of BRIDGE_FILES) {
+    const text = read(file);
+    for (const api of FORBIDDEN_APIS) {
+      assert.ok(
+        !text.includes(api),
+        `${file} contains ${api} — the bridge may only write its own output file (TRUST.md commitment 1)`
+      );
+    }
+    assert.ok(
+      /readFileSync\(0[,)]/.test(text) || !text.includes("readFileSync"),
+      `${file} reads a file other than stdin (fd 0) — the bridge reads only what Claude Code pipes in`
+    );
   }
 });
 

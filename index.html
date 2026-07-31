@@ -72,14 +72,17 @@
       <p id="session-line" class="session-line"></p>
     </section>
 
-    <!-- Sensor import: automatic usage, honestly calibrated -->
+    <!-- Automatic usage: measured statusline snapshots, or the calibrated sensor -->
     <section class="card">
       <details id="sensor-details">
-        <summary><h2>Sensor <span class="muted">(Claude Code, optional)</span></h2></summary>
-        <p class="hint">Run <code>node sensors/claude-code.mjs --json</code> from a clone of this
-          repo and import the output. Pace turns tokens into an <em>estimated</em> % once you
-          calibrate by logging a real check-in. Nothing leaves this device.</p>
-        <label for="sensor-paste">Paste the sensor's JSON output</label>
+        <summary><h2>Automatic usage <span class="muted">(Claude Code, optional)</span></h2></summary>
+        <p class="hint"><strong>Measured</strong> — point Claude Code's statusline at
+          <code>node sensors/statusline.mjs</code> (see the repo) and import
+          <code>~/.pace/usage.json</code> here: it carries the exact % that <code>/usage</code>
+          shows. <strong>Estimated</strong> — import <code>node sensors/claude-code.mjs --json</code>
+          output instead; Pace turns tokens into an <em>estimated</em> % once calibrated by a real
+          check-in. Nothing leaves this device.</p>
+        <label for="sensor-paste">Paste either JSON output</label>
         <textarea id="sensor-paste" rows="3" spellcheck="false"></textarea>
         <div class="row">
           <button id="sensor-import" type="button">Import</button>

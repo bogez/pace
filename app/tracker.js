@@ -1,23 +1,27 @@
 /**
- * Pace tracker (bogez/pace#5, #13): manual /usage check-ins → live color,
- * plus sensor-derived estimates with honest calibration.
+ * Pace tracker (bogez/pace#5, #13, #51): manual /usage check-ins and
+ * measured statusline snapshots → live color, plus sensor-derived
+ * estimates with honest calibration as the fallback.
  *
  * All pace math comes from the engine; window math from window.js;
- * calibration math from calibration.js (docs/design/calibration.md).
+ * calibration math from calibration.js (docs/design/calibration.md);
+ * statusline parsing from measured.js (docs/design/measured-usage.md).
  * This file is only wiring: storage, forms, and rendering. It makes no
  * network calls and never will (TRUST.md commitment 2).
  *
- * Measured vs. estimated (TRUST.md commitment 5): the meter uses the sensor
- * estimate only when it is newer than the last manual check-in, and then it
- * says so on every channel — dashed dot outline, "≈" on the number, and a
- * source line naming the sensor. A manual check-in always wins instantly,
- * and it stays a floor afterwards: usage never goes down inside a window,
- * so an estimate below the last in-window check-in is provably wrong and
- * is clamped up to it.
+ * Measured vs. estimated (TRUST.md commitment 5): manual check-ins and
+ * Claude Code statusline snapshots are both *measured* — the freshest one
+ * drives the meter in the measured style. The sensor estimate is used only
+ * when it is newer than every measured reading, and then it says so on
+ * every channel — dashed dot outline, "≈" on the number, and a source line
+ * naming the sensor. Measured readings also stay a floor afterwards: usage
+ * never goes down inside a window, so an estimate below the last in-window
+ * measured reading is provably wrong and is clamped up to it.
  */
 import { paceDelta, paceColor, paceState, forecast } from "../src/pace.js";
-import { weeklyWindow, sessionWindow, stalenessTier, hoursBetween, WEEK_HOURS, SESSION_HOURS } from "./window.js";
+import { weeklyWindow, windowFromReset, sessionWindow, stalenessTier, hoursBetween, WEEK_HOURS, SESSION_HOURS } from "./window.js";
 import { observe, estimatePct, recompute, emptyCalibration, weightedFromRaw } from "./calibration.js";
+import { parseMeasured } from "./measured.js";
 import { WEIGHTS_VERSION } from "../sensors/weights.mjs";
 import { trayState } from "./tray-format.js";
 
@@ -26,6 +30,7 @@ import { trayState } from "./tray-format.js";
 const KEY = "pace.tracker.v1";
 const CAL_KEY = "pace.calibration.v1";
 const SENSOR_KEY = "pace.sensor.v1";
+const MEASURED_KEY = "pace.measured.v1";
 // A check-in calibrates only if the sensor snapshot is close enough in time
 // that W and U describe the same moment. 3 h keeps drift under a few percent
 // at typical burn rates; recorded here, debatable in #13.
@@ -61,6 +66,7 @@ const saveJson = (key, v) => localStorage.setItem(key, JSON.stringify(v));
 let state = load();
 let cal = loadJson(CAL_KEY, emptyCalibration());
 let sensor = loadJson(SENSOR_KEY, null); // { t, windowStart, raw, weighted }
+let measured = loadJson(MEASURED_KEY, null); // { t, weekly, session } from measured.js
 
 // Provider pricing changed since this calibration was stored → refit from the
 // raw log instead of starting blind (docs/design/calibration.md).
@@ -143,18 +149,18 @@ const setText = (el, s) => {
 /**
  * The sensor estimate to display, or null. Requirements: a calibration
  * exists, the snapshot is inside the current window, and the snapshot is
- * newer than the last manual check-in (a manual check-in always wins —
- * it is ground truth).
+ * newer than the last measured reading (a measurement always wins — it is
+ * ground truth).
  */
-function currentEstimate(win, checkin) {
+function currentEstimate(win, ground) {
   if (!sensor || cal.K == null) return null;
   if (sensor.t < win.start.getTime()) return null;
-  if (checkin && checkin.t >= sensor.t) return null;
+  if (ground && ground.t >= sensor.t) return null;
   const pct = estimatePct(cal, sensor.weighted);
   if (pct == null) return null;
   // Usage is cumulative inside a window: it can't be below what /usage
-  // already showed, so the last in-window check-in floors the estimate.
-  const floor = checkin ? checkin.weeklyPct : 0;
+  // already showed, so the last in-window measurement floors the estimate.
+  const floor = ground ? ground.pct : 0;
   return { pct: Math.min(Math.max(pct, floor), 100), t: sensor.t };
 }
 
@@ -165,19 +171,57 @@ function currentCheckin(win) {
   return last.t >= win.start.getTime() ? last : null;
 }
 
+/**
+ * The weekly statusline snapshot as a measured reading for the current
+ * window, or null — absent, from before the window, or its own window
+ * already reset (its number describes a week that ended).
+ */
+function currentMeasuredWeekly(win, now) {
+  const w = measured?.weekly;
+  if (!w || measured.t < win.start.getTime()) return null;
+  if (w.resetsAt != null && w.resetsAt <= now.getTime()) return null;
+  return { pct: Math.min(w.pct, 100), t: measured.t, source: "statusline" };
+}
+
+/**
+ * The freshest *measured* weekly reading — manual check-in or statusline
+ * snapshot (#51). Both are real /usage numbers; recency decides.
+ */
+function currentGround(win, now) {
+  const c = currentCheckin(win);
+  let g = c ? { pct: c.weeklyPct, t: c.t, source: "checkin" } : null;
+  const m = currentMeasuredWeekly(win, now);
+  if (m && (!g || m.t > g.t)) g = m;
+  return g;
+}
+
+/**
+ * The weekly window to render against: derived from the statusline's
+ * measured resets_at when one is live (#51 — the provider's own boundary,
+ * no setup), else the configured day-of-week anchor.
+ */
+function currentWin(now) {
+  const resetsAt = measured?.weekly?.resetsAt;
+  return (
+    (resetsAt != null && windowFromReset(now, resetsAt)) ||
+    weeklyWindow(now, state.resetDow, state.resetHour)
+  );
+}
+
 /* ---------------- render ---------------- */
 
 function render() {
   const now = new Date();
-  const win = weeklyWindow(now, state.resetDow, state.resetHour);
-  const checkin = currentCheckin(win);
-  const est = currentEstimate(win, checkin);
-  // The freshest of (manual check-in, calibrated sensor estimate) drives the
-  // meter; `estimated` flags which one won.
+  const win = currentWin(now);
+  const ground = currentGround(win, now);
+  const est = currentEstimate(win, ground);
+  // The freshest of (measured reading, calibrated sensor estimate) drives
+  // the meter; `estimated` flags which class won, `source` which measured
+  // channel (manual check-in vs. statusline snapshot).
   const reading = est
     ? { pct: est.pct, t: est.t, estimated: true }
-    : checkin
-      ? { pct: checkin.weeklyPct, t: checkin.t, estimated: false }
+    : ground
+      ? { pct: ground.pct, t: ground.t, estimated: false, source: ground.source }
       : null;
 
   if (!reading) {
@@ -238,7 +282,9 @@ function render() {
       els.sourceLine,
       reading.estimated
         ? "Estimated from the Claude Code sensor + your calibration — log a check-in to correct it."
-        : ""
+        : reading.source === "statusline"
+          ? "Measured by Claude Code — the same number /usage shows."
+          : ""
     );
 
     const f = forecast(reading.pct, win.elapsedHours, WEEK_HOURS);
@@ -258,14 +304,23 @@ function render() {
         post = f.projectedPct < 85 ? " — you can afford to push." : " — cutting it close.";
       }
       if (tier === "stale") {
-        post += ` (Based on ${reading.estimated ? "a sensor snapshot" : "a check-in"} ${fmtHours(age)} ago.)`;
+        const basis = reading.estimated
+          ? "a sensor snapshot"
+          : reading.source === "statusline"
+            ? "a measured snapshot"
+            : "a check-in";
+        post += ` (Based on ${basis} ${fmtHours(age)} ago.)`;
       }
       const strong = document.createElement("strong");
       strong.textContent = num;
       els.forecastLine.replaceChildren(pre, strong, post);
     }
 
-    const what = reading.estimated ? "Sensor snapshot" : "Checked in";
+    const what = reading.estimated
+      ? "Sensor snapshot"
+      : reading.source === "statusline"
+        ? "Measured snapshot"
+        : "Checked in";
     setText(
       els.ageLine,
       tier === "fresh"
@@ -277,7 +332,7 @@ function render() {
   }
 
   renderSession(now);
-  renderSensor(now, win);
+  renderSensor(now, win, ground);
   renderHistory(win);
 
   // The tray bridge (app/tray.js) listens for this; in a plain browser
@@ -286,22 +341,36 @@ function render() {
 }
 
 function renderSession(now) {
-  if (!state.session) {
-    els.sessionLine.textContent = "";
-    return;
+  // Candidates: the manual entry and the measured statusline session
+  // window (#51). The freshest one whose window is still live wins; the
+  // manual form remains the correction channel, same as the weekly meter.
+  const candidates = [];
+  if (state.session)
+    candidates.push({ pct: state.session.pct, resetsAt: state.session.resetsAt, t: state.session.t ?? 0, measured: false });
+  if (measured?.session?.resetsAt != null)
+    candidates.push({ pct: measured.session.pct, resetsAt: measured.session.resetsAt, t: measured.t, measured: true });
+
+  let best = null;
+  let sw = null;
+  for (const c of candidates) {
+    const w = sessionWindow(now, new Date(c.resetsAt));
+    if (!w) continue;
+    if (!best || c.t > best.t) {
+      best = c;
+      sw = w;
+    }
   }
-  const sw = sessionWindow(now, new Date(state.session.resetsAt));
-  if (!sw) {
-    // The stated session ended — yesterday's number means nothing now.
+  if (!best) {
+    // Every stated session ended — yesterday's number means nothing now.
     // Deliberately no save() here: this runs on the 30 s tick, and a save
     // from a stale background instance would overwrite check-ins another
     // instance wrote in the meantime. sessionWindow() already treats the
     // expired entry as absent; the next user-initiated save prunes it.
-    state.session = null;
+    if (state.session && !sessionWindow(now, new Date(state.session.resetsAt))) state.session = null;
     els.sessionLine.textContent = "";
     return;
   }
-  const delta = paceDelta(state.session.pct, sw.elapsedHours, SESSION_HOURS);
+  const delta = paceDelta(best.pct, sw.elapsedHours, SESSION_HOURS);
   const st = paceState(delta);
   // Color rides on the ring, never on the text — colored text can't hold AA
   // contrast across the whole ramp, and the words must stay readable (#8).
@@ -309,19 +378,20 @@ function renderSession(now) {
   const ring = document.createElement("span");
   ring.className = "ring";
   ring.setAttribute("aria-hidden", "true");
-  ring.style.background = `conic-gradient(${paceColor(delta)} ${state.session.pct}%, var(--line) 0)`;
+  ring.style.background = `conic-gradient(${paceColor(delta)} ${best.pct}%, var(--line) 0)`;
   const hole = document.createElement("span");
   hole.className = "ring-hole";
-  hole.textContent = `${Math.round(state.session.pct)}%`;
+  hole.textContent = `${Math.round(best.pct)}%`;
   ring.append(hole);
   els.sessionLine.replaceChildren(
     ring,
-    ` ${st.glyph} ${st.name} — ${state.session.pct}% used, ` +
-      `${fmtHours(SESSION_HOURS - sw.elapsedHours)} until the session resets`
+    ` ${st.glyph} ${st.name} — ${best.pct}% used, ` +
+      `${fmtHours(SESSION_HOURS - sw.elapsedHours)} until the session resets` +
+      (best.measured ? " · measured by Claude Code" : "")
   );
 }
 
-function renderSensor(now, win) {
+function renderSensor(now, win, ground) {
   if (!sensor) {
     setText(els.sensorLine, "");
     return;
@@ -336,9 +406,8 @@ function renderSensor(now, win) {
   }
   const pct = estimatePct(cal, sensor.weighted);
   // Same floor as the meter (currentEstimate): a snapshot taken after the
-  // last check-in can't map to less usage than /usage already showed.
-  const checkin = currentCheckin(win);
-  const floor = checkin && checkin.t <= sensor.t ? checkin.weeklyPct : 0;
+  // last measurement can't map to less usage than /usage already showed.
+  const floor = ground && ground.t <= sensor.t ? ground.pct : 0;
   setText(
     els.sensorLine,
     pct == null
@@ -350,13 +419,58 @@ function renderSensor(now, win) {
   );
 }
 
-/** Parse and store sensor --json output. Returns an error string or null. */
-function importSensorJson(text) {
+/**
+ * The calibration act (#13, #51): a real /usage percentage — typed in, or
+ * measured off the statusline — paired with a recent sensor snapshot
+ * teaches the scale factor. Only pair readings that describe (nearly) the
+ * same moment. Returns a user-facing note, or null when nothing calibrated.
+ */
+function calibrateFrom(pct, t) {
+  const win = currentWin(new Date(t));
+  if (
+    !sensor ||
+    sensor.t < win.start.getTime() ||
+    hoursBetween(new Date(sensor.t), new Date(t)) > CALIBRATION_PAIRING_HOURS
+  )
+    return null;
+  const r = observe(cal, { t, U: pct, raw: sensor.raw });
+  if (!r.accepted) return null;
+  cal = r.cal;
+  saveJson(CAL_KEY, cal);
+  return r.unstable
+    ? "⚠ Calibration updated, but this reading disagrees strongly with earlier ones — " +
+        "if the next one does too, your usage mix may have changed."
+    : "Calibrated ✓ — the sensor's estimates just got more accurate.";
+}
+
+/** Feedback from the last import (e.g. a calibration note), shown post-render. */
+let importNote = null;
+
+/**
+ * Parse and store an import: sensor --json output, or measured statusline
+ * JSON (raw stdin document or the bridge's teed file — anything carrying
+ * rate_limits, see docs/design/measured-usage.md). Returns an error string
+ * or null.
+ */
+function importUsageJson(text) {
   let d;
   try {
     d = JSON.parse(text);
   } catch {
-    return "That doesn't parse as JSON — paste the exact --json output.";
+    return "That doesn't parse as JSON — paste the exact output.";
+  }
+  if (d?.rate_limits) {
+    const m = parseMeasured(d, Date.now());
+    if (!m) return "That has rate_limits, but no usable used_percentage numbers inside it.";
+    // The tray re-reads the teed file on a timer; the same snapshot must not
+    // re-calibrate (duplicate log entries) — only genuinely new readings do.
+    const isNew = !measured || m.t > measured.t;
+    measured = m;
+    saveJson(MEASURED_KEY, measured);
+    // A measured weekly % is as real as a typed one — calibrate from it, so
+    // the estimate fallback improves without the user ever typing (#51).
+    importNote = isNew && m.weekly ? calibrateFrom(m.weekly.pct, m.t) : null;
+    return null;
   }
   const w = d?.week;
   if (!d?.generatedAt || !w || typeof w.weighted !== "number") {
@@ -407,26 +521,7 @@ els.checkinForm.addEventListener("submit", (e) => {
   if (state.checkins.length > 100) state.checkins = state.checkins.slice(-100);
   save();
 
-  // The calibration act (#13): a real /usage number paired with a recent
-  // sensor snapshot teaches the scale factor. Only pair readings that
-  // describe (nearly) the same moment.
-  const win = weeklyWindow(new Date(now), state.resetDow, state.resetHour);
-  let calibrationNote = null;
-  if (
-    sensor &&
-    sensor.t >= win.start.getTime() &&
-    hoursBetween(new Date(sensor.t), new Date(now)) <= CALIBRATION_PAIRING_HOURS
-  ) {
-    const r = observe(cal, { t: now, U: pct, raw: sensor.raw });
-    if (r.accepted) {
-      cal = r.cal;
-      saveJson(CAL_KEY, cal);
-      calibrationNote = r.unstable
-        ? "⚠ Calibration updated, but this reading disagrees strongly with earlier ones — " +
-          "if the next one does too, your usage mix may have changed."
-        : "Calibrated ✓ — the sensor's estimates just got more accurate.";
-    }
-  }
+  const calibrationNote = calibrateFrom(pct, now);
 
   els.weeklyPct.value = "";
   render();
@@ -435,30 +530,37 @@ els.checkinForm.addEventListener("submit", (e) => {
   if (calibrationNote) setText(els.sensorLine, calibrationNote);
 });
 
+/** One import path for every source: paste, file, and the tray's refresh. */
+function applyImport(text) {
+  const err = importUsageJson(text);
+  if (err) {
+    setText(els.sensorLine, err);
+    return false;
+  }
+  render();
+  // After render, so renderSensor doesn't immediately overwrite the note;
+  // the next 30 s tick restores the regular sensor line.
+  if (importNote) {
+    setText(els.sensorLine, importNote);
+    importNote = null;
+  }
+  return true;
+}
+
 // Programmatic import — the tray's auto-refresh (app/tray.js) goes through
 // the same parse/validate/store path as a manual paste.
 addEventListener("pace:sensor-json", (e) => {
-  const err = importSensorJson(e.detail);
-  if (err) setText(els.sensorLine, err);
-  else render();
+  applyImport(e.detail);
 });
 
 els.sensorImport.addEventListener("click", () => {
-  const err = importSensorJson(els.sensorPaste.value.trim());
-  if (err) {
-    setText(els.sensorLine, err);
-    return;
-  }
-  els.sensorPaste.value = "";
-  render();
+  if (applyImport(els.sensorPaste.value.trim())) els.sensorPaste.value = "";
 });
 
 els.sensorFile.addEventListener("change", async () => {
   const file = els.sensorFile.files?.[0];
   if (!file) return;
-  const err = importSensorJson(await file.text());
-  if (err) setText(els.sensorLine, err);
-  else render();
+  applyImport(await file.text());
   els.sensorFile.value = "";
 });
 
@@ -471,7 +573,8 @@ els.sessionForm.addEventListener("submit", (e) => {
   const resetsAt = new Date();
   resetsAt.setHours(h, m, 0, 0);
   if (resetsAt <= new Date()) resetsAt.setDate(resetsAt.getDate() + 1); // "7 PM" said at 11 PM = tomorrow
-  state.session = { pct, resetsAt: resetsAt.getTime() };
+  // `t` lets recency arbitrate against a measured statusline session (#51).
+  state.session = { pct, resetsAt: resetsAt.getTime(), t: Date.now() };
   save();
   render();
 });
@@ -494,12 +597,13 @@ function reloadFromStorage() {
   state = load();
   cal = loadJson(CAL_KEY, emptyCalibration());
   sensor = loadJson(SENSOR_KEY, null);
+  measured = loadJson(MEASURED_KEY, null);
   els.resetDow.value = String(state.resetDow);
   els.resetHour.value = String(state.resetHour);
   render();
 }
 addEventListener("storage", (e) => {
-  if (e.key === null || [KEY, CAL_KEY, SENSOR_KEY].includes(e.key)) reloadFromStorage();
+  if (e.key === null || [KEY, CAL_KEY, SENSOR_KEY, MEASURED_KEY].includes(e.key)) reloadFromStorage();
 });
 // A page restored from the back/forward cache missed the storage events
 // that fired while it was frozen.
@@ -509,10 +613,11 @@ addEventListener("pageshow", (e) => {
 
 els.clear.addEventListener("click", () => {
   if (!confirm("Delete all Pace data from this browser?")) return;
-  for (const k of [KEY, CAL_KEY, SENSOR_KEY]) localStorage.removeItem(k);
+  for (const k of [KEY, CAL_KEY, SENSOR_KEY, MEASURED_KEY]) localStorage.removeItem(k);
   state = load();
   cal = emptyCalibration();
   sensor = null;
+  measured = null;
   render();
 });
 

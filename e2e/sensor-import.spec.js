@@ -66,6 +66,27 @@ test("the full loop: zero state → calibrate → estimated → measured wins", 
   expect(await page.locator("#dot").getAttribute("class")).not.toContain("estimated");
 });
 
+test("an estimate never reads below the latest manual check-in", async ({ page }) => {
+  await page.goto("/");
+  // Two calibration points with different implied K so the EMA settles above
+  // the latest observation: W = 3.0M at 25% gives K = 120k, then W = 3.6M at
+  // 50% gives K_obs = 72k → K = ½·72k + ½·120k = 96k.
+  await importSensor(page, sensorJson(1));
+  await page.fill("#weekly-pct", "25");
+  await page.click("#checkin-form button");
+  await importSensor(page, sensorJson(1.2, 0));
+  await page.fill("#weekly-pct", "50");
+  await page.click("#checkin-form button");
+  await expect(page.locator("#delta-line")).toContainText("50% used");
+
+  // A fresh snapshot with slightly more tokens: naive estimate is
+  // 3.9M / 96k ≈ 41% — below the 50% the user just typed, which is
+  // impossible inside one window. The check-in floors it.
+  await importSensor(page, sensorJson(1.3, 0));
+  await expect(page.locator("#delta-line")).toContainText("≈50% used (estimated)");
+  await expect(page.locator("#sensor-line")).toContainText("≈ 50%");
+});
+
 test("garbage input is refused with a message, state unharmed", async ({ page }) => {
   await page.goto("/");
   await importSensor(page, "not json at all");

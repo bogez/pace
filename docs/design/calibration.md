@@ -53,6 +53,12 @@ A sensor-derived estimate is **never rendered in the measured style** (TRUST.md
 commitment 5); estimated vs. measured presentation is [#13](https://github.com/bogez/pace/issues/13)'s
 contract.
 
+3. **The check-in floor** — usage is cumulative inside a window, so a snapshot taken
+   after a manual check-in can never map to *less* usage than `/usage` already showed.
+   Displayed estimates are clamped up to the latest in-window check-in; a reading below
+   it would be provably wrong (the EMA on `K` does not pass exactly through the newest
+   observation, so the naive `W / K` can dip under it).
+
 ## The zero state
 
 Before the first calibration point, only what is truly known is shown: weighted tokens

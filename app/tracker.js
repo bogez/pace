@@ -10,7 +10,10 @@
  * Measured vs. estimated (TRUST.md commitment 5): the meter uses the sensor
  * estimate only when it is newer than the last manual check-in, and then it
  * says so on every channel — dashed dot outline, "≈" on the number, and a
- * source line naming the sensor. A manual check-in always wins instantly.
+ * source line naming the sensor. A manual check-in always wins instantly,
+ * and it stays a floor afterwards: usage never goes down inside a window,
+ * so an estimate below the last in-window check-in is provably wrong and
+ * is clamped up to it.
  */
 import { paceDelta, paceColor, paceState, forecast } from "../src/pace.js";
 import { weeklyWindow, sessionWindow, stalenessTier, hoursBetween, WEEK_HOURS, SESSION_HOURS } from "./window.js";
@@ -149,7 +152,10 @@ function currentEstimate(win, checkin) {
   if (checkin && checkin.t >= sensor.t) return null;
   const pct = estimatePct(cal, sensor.weighted);
   if (pct == null) return null;
-  return { pct: Math.min(pct, 100), t: sensor.t };
+  // Usage is cumulative inside a window: it can't be below what /usage
+  // already showed, so the last in-window check-in floors the estimate.
+  const floor = checkin ? checkin.weeklyPct : 0;
+  return { pct: Math.min(Math.max(pct, floor), 100), t: sensor.t };
 }
 
 /** Latest check-in belonging to the current window, or null. */
@@ -287,8 +293,11 @@ function renderSession(now) {
   const sw = sessionWindow(now, new Date(state.session.resetsAt));
   if (!sw) {
     // The stated session ended — yesterday's number means nothing now.
+    // Deliberately no save() here: this runs on the 30 s tick, and a save
+    // from a stale background instance would overwrite check-ins another
+    // instance wrote in the meantime. sessionWindow() already treats the
+    // expired entry as absent; the next user-initiated save prunes it.
     state.session = null;
-    save();
     els.sessionLine.textContent = "";
     return;
   }
@@ -326,13 +335,17 @@ function renderSensor(now, win) {
     return;
   }
   const pct = estimatePct(cal, sensor.weighted);
+  // Same floor as the meter (currentEstimate): a snapshot taken after the
+  // last check-in can't map to less usage than /usage already showed.
+  const checkin = currentCheckin(win);
+  const floor = checkin && checkin.t <= sensor.t ? checkin.weeklyPct : 0;
   setText(
     els.sensorLine,
     pct == null
       ? // The honest zero state: raw tokens, never an invented percent.
         `${M(sensor.weighted)} weighted tokens this week (snapshot ${age} ago). ` +
         `Log what /usage shows once to calibrate — then Pace can estimate your %.`
-      : `${M(sensor.weighted)} weighted tokens ≈ ${Math.min(pct, 100).toFixed(0)}% (snapshot ${age} ago, ` +
+      : `${M(sensor.weighted)} weighted tokens ≈ ${Math.min(Math.max(pct, floor), 100).toFixed(0)}% (snapshot ${age} ago, ` +
         `calibrated from ${cal.log.length} check-in${cal.log.length === 1 ? "" : "s"}).`
   );
 }
@@ -471,6 +484,28 @@ for (const el of [els.resetDow, els.resetHour]) {
     render();
   });
 }
+
+// Another instance wrote to storage — a second tab, the installed PWA
+// window, or the tray popover. Reload before this instance's next save
+// wholesale-overwrites the shared keys with its stale in-memory copy;
+// without this, a check-in logged in one instance was silently rolled
+// back by the next save from any other.
+function reloadFromStorage() {
+  state = load();
+  cal = loadJson(CAL_KEY, emptyCalibration());
+  sensor = loadJson(SENSOR_KEY, null);
+  els.resetDow.value = String(state.resetDow);
+  els.resetHour.value = String(state.resetHour);
+  render();
+}
+addEventListener("storage", (e) => {
+  if (e.key === null || [KEY, CAL_KEY, SENSOR_KEY].includes(e.key)) reloadFromStorage();
+});
+// A page restored from the back/forward cache missed the storage events
+// that fired while it was frozen.
+addEventListener("pageshow", (e) => {
+  if (e.persisted) reloadFromStorage();
+});
 
 els.clear.addEventListener("click", () => {
   if (!confirm("Delete all Pace data from this browser?")) return;

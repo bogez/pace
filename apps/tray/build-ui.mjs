@@ -24,6 +24,7 @@ for (const p of [
   "app/tracker.js",
   "app/window.js",
   "app/calibration.js",
+  "app/measured.js",
   "app/tray-format.js",
   "app/tray.js",
   "app/icons/icon-192.png",

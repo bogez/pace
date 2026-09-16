@@ -12,10 +12,35 @@
 
 use tauri::{
     image::Image,
-    menu::{MenuBuilder, MenuItemBuilder},
+    menu::{MenuBuilder, MenuItem, MenuItemBuilder},
     tray::{TrayIconBuilder, TrayIconEvent},
-    Manager,
+    Manager, Wry,
 };
+
+/// The tray menu's show/hide entry, kept in app state so its label can follow
+/// the popover's real visibility. On Linux the menu is the only way to reach
+/// the window, so a one-way "Show Pace" would leave the window's X as the only
+/// way to dismiss it — the tray has to offer both halves of the toggle.
+struct ToggleItem(MenuItem<Wry>);
+
+fn set_toggle_label(app: &tauri::AppHandle, visible: bool) {
+    if let Some(item) = app.try_state::<ToggleItem>() {
+        let _ = item.0.set_text(if visible { "Hide Pace" } else { "Show Pace" });
+    }
+}
+
+/// Show the popover if hidden, hide it if shown — the same gesture the
+/// left-click toggle gives macOS and Windows.
+fn toggle_popover(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if win.is_visible().unwrap_or(false) {
+            let _ = win.hide();
+            set_toggle_label(app, false);
+        } else {
+            show_popover(app);
+        }
+    }
+}
 
 /// Render a filled circle (the pace dot) as an RGBA icon at runtime.
 fn dot_icon(r: u8, g: u8, b: u8) -> Image<'static> {
@@ -84,51 +109,75 @@ fn read_sensor(
     v
 }
 
+/// Bring the popover up. The window is an ordinary taskbar window, so if the
+/// WM declines to raise or focus it, it is still recoverable by normal means —
+/// no always-on-top or restacking tricks here.
+fn show_popover(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.unminimize();
+        let _ = win.show();
+        let _ = win.set_focus();
+        set_toggle_label(app, true);
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![set_tray, read_sensor, read_usage_file])
         .setup(|app| {
+            // The menu is the ONLY interaction surface on Linux: tray click
+            // events are never emitted there (tray-icon/libayatana-appindicator
+            // exposes a menu and nothing else), and `show_menu_on_left_click`
+            // is documented "Linux: Unsupported" — the menu opens on either
+            // button. So "Show Pace" has to live in the menu, or a Linux user
+            // gets a dot they can never open.
+            let toggle = MenuItemBuilder::with_id("toggle", "Show Pace").build(app)?;
             let quit = MenuItemBuilder::with_id("quit", "Quit Pace").build(app)?;
-            let menu = MenuBuilder::new(app).item(&quit).build()?;
+            let menu = MenuBuilder::new(app).item(&toggle).separator().item(&quit).build()?;
+            app.manage(ToggleItem(toggle.clone()));
 
             TrayIconBuilder::with_id("pace")
                 .icon(dot_icon(137, 135, 129)) // gray until first data
                 .tooltip("Pace — no data yet")
                 .menu(&menu)
+                // macOS/Windows: left-click toggles the popover directly (below),
+                // so the menu stays on right-click. No-op on Linux.
                 .show_menu_on_left_click(false)
-                .on_menu_event(|app, event| {
-                    if event.id().as_ref() == "quit" {
-                        app.exit(0);
-                    }
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "toggle" => toggle_popover(app),
+                    "quit" => app.exit(0),
+                    _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    // left-click toggles the popover window
+                    // Left-click toggles the popover. Never fires on Linux —
+                    // that platform goes through the "Show Pace" menu item.
                     if let TrayIconEvent::Click {
                         button: tauri::tray::MouseButton::Left,
                         button_state: tauri::tray::MouseButtonState::Up,
                         ..
                     } = event
                     {
-                        let app = tray.app_handle();
-                        if let Some(win) = app.get_webview_window("main") {
-                            if win.is_visible().unwrap_or(false) {
-                                let _ = win.hide();
-                            } else {
-                                let _ = win.show();
-                                let _ = win.set_focus();
-                            }
-                        }
+                        toggle_popover(tray.app_handle());
                     }
                 })
                 .build(app)?;
             Ok(())
         })
-        .on_window_event(|window, event| {
-            // closing the popover hides it instead of quitting
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                window.hide().ok();
+        .on_window_event(|window, event| match event {
+            // Deliberately NOT hiding on `Focused(false)`: the window holds
+            // native controls (the reset <select>s, the number inputs), and a
+            // GTK dropdown takes focus while it is open. Dismissing on blur
+            // tears the popover down mid-interaction and makes those controls
+            // impossible to use. The window earns its keep in the taskbar
+            // instead — see `skipTaskbar` in tauri.conf.json.
+            //
+            // Closing the popover hides it instead of quitting the app.
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                let _ = window.hide();
                 api.prevent_close();
+                set_toggle_label(window.app_handle(), false);
             }
+            _ => {}
         })
         .run(tauri::generate_context!())
         .expect("error while running Pace")

@@ -4,6 +4,11 @@
    theme holds the same AA contrast. Color never carries meaning alone. */
 
 :root {
+  /* Native form controls (select dropdowns, number spinners, scrollbars) are
+     painted by the engine, not by our `background` rules. Without this they
+     render light-on-light inside the dark theme — unreadable in the WebKitGTK
+     webview the Linux tray app uses. */
+  color-scheme: dark;
   --bg: #0c0e0d;
   --card: #131715;
   --inset: #161b18;
@@ -15,6 +20,7 @@
 }
 @media (prefers-color-scheme: light) {
   :root {
+    color-scheme: light;
     --bg: #f6f7f4;
     --card: #ffffff;
     --inset: #f0f2ee;

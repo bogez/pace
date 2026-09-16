@@ -39,3 +39,48 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+
+  # The tray app's Rust never gets compiled by `sensor-parity` above — that job
+  # builds apps/tray/sensor-rs only. Until this job existed, a change to
+  # src-tauri/src/lib.rs could reach a release tag having never been compiled
+  # on any PR: release.yml is the sole consumer of src-tauri, and it runs on
+  # tag push or manual dispatch. That is how the Linux tray shipped unopenable.
+  # `cargo check` is the cheap half of that build: it catches the compile-time
+  # half of the class without bundling four installers.
+  tray-app:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+
+      # Same package list release.yml uses (ayatana, not libappindicator3).
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tray/src-tauri
+
+      - name: Install frontend deps
+        working-directory: apps/tray
+        run: npm install
+
+      # `generate_context!` reads dist/ and icons/ at compile time, and neither
+      # is committed — without this the check fails on a missing icon, not on
+      # the code under review.
+      - name: Build popover UI and icons
+        working-directory: apps/tray
+        run: |
+          node build-ui.mjs
+          node ../../scripts/make-icon.mjs app-icon.png 1024
+          npx tauri icon app-icon.png
+
+      - name: Compile the tray app
+        working-directory: apps/tray/src-tauri
+        run: cargo check --all-targets

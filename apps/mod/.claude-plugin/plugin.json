@@ -1,0 +1,8 @@
+{
+  "name": "pace-kitchen",
+  "version": "0.2.0",
+  "description": "Your usage pace as an 8-bit chef: cooking perfectly when you're in the zone, cold when you have headroom, burning when you'll hit the limit.",
+  "author": { "name": "bogez" },
+  "homepage": "https://github.com/bogez/pace",
+  "license": "MIT"
+}

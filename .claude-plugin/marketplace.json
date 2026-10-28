@@ -1,0 +1,14 @@
+{
+  "name": "pace",
+  "description": "Pace \u2014 a pace meter for your AI subscription. Claude Code mods.",
+  "owner": {
+    "name": "bogez"
+  },
+  "plugins": [
+    {
+      "name": "pace-kitchen",
+      "source": "./apps/mod",
+      "description": "Your usage pace as an 8-bit chef, as a Claude Code mod"
+    }
+  ]
+}

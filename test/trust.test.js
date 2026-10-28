@@ -36,13 +36,17 @@ const SENSOR_FILES = [
 // The statusline bridge (#51) is the one shipped file allowed to write —
 // and only its own output file, via the allowlisted APIs checked below.
 const BRIDGE_FILES = ["sensors/statusline.mjs"];
+// The Pace kitchen mod (apps/mod) runs inside Claude Code with the user's
+// permissions; everything it reaches goes through the mods API (`$.`), so
+// what it may touch is checked on those calls.
+const MOD_FILES = ["apps/mod/hooks/register.js", "apps/mod/lib/kitchen.js", "apps/mod/lib/pace.js"];
 
 // Network APIs that must not appear anywhere in shipped code. `fetch` is
 // special-cased: sw.js needs it to serve the app shell, under a guard.
 const FORBIDDEN = ["XMLHttpRequest", "WebSocket", "sendBeacon", "EventSource", "importScripts"];
 
 test("TRUST 2: no network APIs in any shipped file", () => {
-  for (const file of [...APP_FILES, ...SENSOR_FILES, ...BRIDGE_FILES]) {
+  for (const file of [...APP_FILES, ...SENSOR_FILES, ...BRIDGE_FILES, ...MOD_FILES]) {
     const text = read(file);
     for (const api of FORBIDDEN) {
       assert.ok(
@@ -120,6 +124,29 @@ test("TRUST 1: the statusline bridge writes only through allowlisted APIs", () =
       `${file} reads a file other than stdin (fd 0) — the bridge reads only what Claude Code pipes in`
     );
   }
+});
+
+test("TRUST 1 & 2: the kitchen mod has no network, no processes, one write", () => {
+  // Like the statusline bridge, the mod's only side effect is teeing the
+  // reading to Pace's own usage file. No $.http, no $.process, no model calls
+  // (it must not spend the usage it measures), no MCP.
+  const FORBIDDEN_CALLS = ["$.http", "$.process", "$.model", "$.mcp", "$.prompt.submit", "$.session.send"];
+  for (const file of MOD_FILES) {
+    const text = read(file);
+    for (const call of FORBIDDEN_CALLS) {
+      assert.ok(
+        !text.includes(call),
+        `${file} calls ${call} — the mod stays on-device and read-only apart from its usage file (TRUST.md)`
+      );
+    }
+  }
+  const hooks = read("apps/mod/hooks/register.js");
+  assert.equal(
+    hooks.match(/\$\.fs\.write\(/g)?.length ?? 0,
+    1,
+    "apps/mod writes through $.fs.write more than once — it may write only the usage file"
+  );
+  assert.ok(!/\$\.fs\.(read|list|stat)\(/.test(hooks), "apps/mod reads files — it has no reason to");
 });
 
 test("TRUST 3: no runtime dependencies, ever", () => {

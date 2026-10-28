@@ -5,7 +5,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "test": "node --test",
+    "test": "node --test \"test/**/*.test.js\"",
+    "test:mod": "cd apps/mod && claude plugin test",
     "test:e2e": "playwright test"
   },
   "license": "MIT",
